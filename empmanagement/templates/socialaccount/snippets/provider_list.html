@@ -1,0 +1,15 @@
+{% load socialaccount %}
+
+{% get_providers as socialaccount_providers %}
+
+{% for provider in socialaccount_providers %}
+{% if provider.id == "microsoft" %}
+<div class="d-grid gap-2 mb-3">
+    <a href="{% provider_login_url provider.id process=process scope=scope auth_params=auth_params %}" 
+       class="btn btn-outline-primary">
+        <i class="fab fa-microsoft me-2"></i>
+        Sign in with Microsoft
+    </a>
+</div>
+{% endif %}
+{% endfor %} 

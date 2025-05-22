@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Performance Reviews</h2>
+    {% if user.is_staff %}
+    <a href="{% url 'create_performance_review' %}" class="btn btn-primary mb-3">Create New Review</a>
+    {% endif %}
+    
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Employee</th>
+                    <th>Review Date</th>
+                    <th>Rating</th>
+                    <th>Next Review</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for review in reviews %}
+                <tr>
+                    <td>{{ review.employee.firstname }} {{ review.employee.lastname }}</td>
+                    <td>{{ review.review_date }}</td>
+                    <td>{{ review.rating }}/5</td>
+                    <td>{{ review.next_review_date }}</td>
+                    <td>
+                        <a href="#" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#reviewModal{{ review.id }}">
+                            View Details
+                        </a>
+                    </td>
+                </tr>
+                
+                <!-- Review Details Modal -->
+                <div class="modal fade" id="reviewModal{{ review.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Performance Review Details</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p><strong>Employee:</strong> {{ review.employee.firstname }} {{ review.employee.lastname }}</p>
+                                <p><strong>Review Date:</strong> {{ review.review_date }}</p>
+                                <p><strong>Rating:</strong> {{ review.rating }}/5</p>
+                                <p><strong>Comments:</strong> {{ review.comments }}</p>
+                                <p><strong>Goals Achieved:</strong> {{ review.goals_achieved }}</p>
+                                <p><strong>Areas of Improvement:</strong> {{ review.areas_of_improvement }}</p>
+                                <p><strong>Next Review Date:</strong> {{ review.next_review_date }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center">No performance reviews found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}Security Error{% endblock %}
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="alert alert-danger shadow">
+                <h2 class="mb-3">Security Check Failed</h2>
+                <p>Your session has expired or the security token is invalid. Please refresh the page and try again.</p>
+                <ul>
+                    <li>Make sure cookies are enabled in your browser.</li>
+                    <li>If you logged in or out in another tab, refresh this page before submitting the form.</li>
+                    <li>If the problem persists, clear your browser cookies for <strong>127.0.0.1</strong> and try again.</li>
+                </ul>
+                <a href="/ems/accounts/login/" class="btn btn-primary mt-3">Go to Login</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

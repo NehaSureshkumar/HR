@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Notices - Employee Management System{% endblock %}
+
+{% block content %}
+<div class="container mx-auto py-6">
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-bold">Notices</h2>
+        {% if user.is_staff or profile.role in 'ADMIN,HR' %}
+        <a href="{% url 'create_notice' %}" class="btn btn-primary">Create Notice</a>
+        {% endif %}
+    </div>
+    <div class="card">
+        <div class="card-body">
+            {% if notices %}
+            <ul class="list-group">
+                {% for notice in notices %}
+                <li class="list-group-item flex justify-between items-center">
+                    <div>
+                        <a href="{% url 'noticedetail' notice.Id %}" class="font-semibold text-blue-700 hover:underline">{{ notice.title }}</a>
+                        <div class="text-sm text-gray-500">{{ notice.publishDate|date:"M d, Y H:i" }} | {{ notice.tag }}</div>
+                    </div>
+                    {% if user.is_staff or profile.role in 'ADMIN,HR' or notice.created_by == user %}
+                    <form method="post" action="{% url 'delete_notice' notice.Id %}" onsubmit="return confirm('Delete this notice?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                    </form>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-gray-500">No notices found.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+.notices-container {
+    padding: 20px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.section-header h1 {
+    font-size: 24px;
+    color: #2d3748;
+}
+
+.action-button {
+    background-color: #4299e1;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.action-button:hover {
+    background-color: #3182ce;
+}
+
+.notices-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.notice-card {
+    background-color: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+}
+
+.notice-card:hover {
+    transform: translateY(-2px);
+}
+
+.notice-header {
+    margin-bottom: 15px;
+}
+
+.notice-header h3 {
+    font-size: 18px;
+    color: #2d3748;
+    margin: 0 0 5px 0;
+}
+
+.notice-date {
+    font-size: 12px;
+    color: #718096;
+}
+
+.notice-content {
+    color: #4a5568;
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 20px;
+}
+
+.notice-footer {
+    border-top: 1px solid #e2e8f0;
+    padding-top: 15px;
+}
+
+.read-more {
+    color: #4299e1;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.read-more:hover {
+    text-decoration: underline;
+}
+
+.no-notices {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 40px;
+    background-color: white;
+    border-radius: 12px;
+    color: #718096;
+}
+</style>
+{% endblock %}

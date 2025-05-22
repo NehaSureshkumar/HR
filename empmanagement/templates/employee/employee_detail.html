@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block title %}Employee Details{% endblock %}
+{% block content %}
+<div class="container mx-auto py-8">
+    <div class="bg-white rounded-lg shadow p-6 max-w-xl mx-auto">
+        <h2 class="text-2xl font-bold mb-4">Employee Details</h2>
+        <div class="mb-4"><strong>Name:</strong> {{ employee.firstName }} {{ employee.lastName }}</div>
+        <div class="mb-2"><strong>Email:</strong> {{ employee.email }}</div>
+        <div class="mb-2"><strong>Phone:</strong> {{ employee.phoneNo }}</div>
+        <div class="mb-2"><strong>Department:</strong> {{ employee.department|default:'-' }}</div>
+        <div class="mb-2"><strong>Designation:</strong> {{ employee.designation }}</div>
+        <div class="mb-2"><strong>Salary:</strong> {{ employee.salary }}</div>
+        <div class="mb-2"><strong>Join Date:</strong> {{ employee.joinDate|date:'M d, Y' }}</div>
+        <a href="{% url 'admin_dashboard' %}" class="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Back to Dashboard</a>
+    </div>
+</div>
+{% endblock %} 

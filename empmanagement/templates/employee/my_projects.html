@@ -1,0 +1,49 @@
+{% extends 'employee/base.html' %}
+{% block title %}My Projects - Employee Management System{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto py-8 px-4">
+    <h2 class="text-3xl font-bold mb-8 text-blue-800">My Projects</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-xl font-semibold mb-4 text-blue-700">Ongoing Projects</h3>
+            <ul class="space-y-4">
+                {% for project in ongoing_projects %}
+                <li class="border-b pb-2">
+                    <h4 class="font-medium">{{ project.name }}</h4>
+                    <p class="text-sm text-gray-600">Start Date: {{ project.start_date }}</p>
+                </li>
+                {% empty %}
+                <li class="text-gray-400">No ongoing projects.</li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <h3 class="text-xl font-semibold mb-4 text-blue-700">Upcoming Projects</h3>
+            <ul class="space-y-4">
+                {% for project in upcoming_projects %}
+                <li class="border-b pb-2">
+                    <h4 class="font-medium">{{ project.name }}</h4>
+                    <p class="text-sm text-gray-600">Start Date: {{ project.start_date }}</p>
+                </li>
+                {% empty %}
+                <li class="text-gray-400">No upcoming projects.</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    <div class="bg-white rounded-lg shadow p-6 mt-8">
+        <h3 class="text-xl font-semibold mb-4 text-blue-700">All Assigned Projects</h3>
+        <ul class="space-y-4">
+            {% for project in employee.projects.all %}
+            <li class="border-b pb-2">
+                <h4 class="font-medium">{{ project.name }}</h4>
+                <span class="text-xs text-gray-500">Status: {{ project.get_status_display }}</span>
+                <p class="text-sm text-gray-600">Start Date: {{ project.start_date }}</p>
+            </li>
+            {% empty %}
+            <li class="text-gray-400">No assigned projects.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Regulate Attendance</h2>
+    <form method="post">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="status" class="form-label">Status</label>
+            <select name="status" id="status" class="form-select">
+                <option value="PRESENT" {% if record.status == 'PRESENT' %}selected{% endif %}>Present</option>
+                <option value="ABSENT" {% if record.status == 'ABSENT' %}selected{% endif %}>Absent</option>
+                <option value="HALF_DAY" {% if record.status == 'HALF_DAY' %}selected{% endif %}>Half Day</option>
+                <option value="LATE" {% if record.status == 'LATE' %}selected{% endif %}>Late</option>
+            </select>
+        </div>
+        <div class="mb-3">
+            <label for="time_in" class="form-label">Time In</label>
+            <input type="time" name="time_in" id="time_in" class="form-control" value="{{ record.time_in|time:'H:i' }}">
+        </div>
+        <div class="mb-3">
+            <label for="time_out" class="form-label">Time Out</label>
+            <input type="time" name="time_out" id="time_out" class="form-control" value="{{ record.time_out|time:'H:i' }}">
+        </div>
+        <div class="mb-3">
+            <label for="overtime_hours" class="form-label">Overtime Hours</label>
+            <input type="number" name="overtime_hours" id="overtime_hours" class="form-control" value="{{ record.overtime_hours }}">
+        </div>
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a href="{% url 'attendance_list' %}" class="btn btn-secondary ms-2">Cancel</a>
+    </form>
+</div>
+{% endblock %} 

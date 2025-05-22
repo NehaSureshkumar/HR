@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}Request Leave - Employee Management System{% endblock %}
+{% block content %}
+<div class="max-w-xl mx-auto py-8 px-4">
+    <h2 class="text-3xl font-bold mb-8 text-blue-800">Request Leave</h2>
+    <form method="post" class="space-y-4 bg-white rounded-lg shadow p-6">
+        {% csrf_token %}
+        <div>
+            <label for="leave_type" class="block text-gray-700 font-medium mb-1">Leave Type</label>
+            <select name="leave_type" id="leave_type" class="w-full border rounded px-3 py-2" required>
+                <option value="">Select Leave Type</option>
+                <option value="SICK">Sick Leave</option>
+                <option value="CASUAL">Casual Leave</option>
+                <option value="ANNUAL">Annual Leave</option>
+                <option value="MATERNITY">Maternity Leave</option>
+                <option value="PATERNITY">Paternity Leave</option>
+            </select>
+        </div>
+        <div>
+            <label for="start_date" class="block text-gray-700 font-medium mb-1">Start Date</label>
+            <input type="date" name="start_date" id="start_date" class="w-full border rounded px-3 py-2" required>
+        </div>
+        <div>
+            <label for="end_date" class="block text-gray-700 font-medium mb-1">End Date</label>
+            <input type="date" name="end_date" id="end_date" class="w-full border rounded px-3 py-2" required>
+        </div>
+        <div>
+            <label for="reason" class="block text-gray-700 font-medium mb-1">Reason for Leave</label>
+            <textarea name="reason" id="reason" class="w-full border rounded px-3 py-2" rows="4" required></textarea>
+        </div>
+        <div class="mt-6 flex justify-end">
+            <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700 font-medium">Submit</button>
+            <a href="{% url 'leave_request_list' %}" class="ml-4 px-6 py-2 bg-gray-300 text-gray-700 rounded shadow hover:bg-gray-400 font-medium">Cancel</a>
+        </div>
+    </form>
+</div>
+<script>
+// Add date validation
+const startDate = document.getElementById('start_date');
+const endDate = document.getElementById('end_date');
+if (startDate && endDate) {
+    startDate.addEventListener('change', function() {
+        endDate.min = this.value;
+    });
+    endDate.addEventListener('change', function() {
+        startDate.max = this.value;
+    });
+}
+</script>
+{% endblock %} 

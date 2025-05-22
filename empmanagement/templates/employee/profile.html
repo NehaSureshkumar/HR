@@ -1,0 +1,76 @@
+{% extends 'employee/base.html' %}
+{% block title %}Profile - Employee Management System{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto py-8 px-4">
+    <h2 class="text-3xl font-bold mb-8 text-blue-800">My Profile</h2>
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <h3 class="font-semibold text-lg mb-4 text-blue-700">Personal Information</h3>
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">First Name</label>
+                    <input type="text" value="{{ employee.firstName }}" class="w-full border rounded px-3 py-2 bg-gray-100" disabled>
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">Last Name</label>
+                    <input type="text" value="{{ employee.lastName }}" class="w-full border rounded px-3 py-2 bg-gray-100" disabled>
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">Phone</label>
+                    <input type="text" name="phone" value="{{ employee.phoneNo }}" class="w-full border rounded px-3 py-2" required>
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">Email</label>
+                    <input type="email" name="email" value="{{ employee.email }}" class="w-full border rounded px-3 py-2" required>
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">Designation</label>
+                    <input type="text" value="{{ employee.designation }}" class="w-full border rounded px-3 py-2 bg-gray-100" disabled>
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">Date of Birth</label>
+                    <input type="text" value="{{ employee.dOB|date:'Y-m-d' }}" class="w-full border rounded px-3 py-2 bg-gray-100" disabled>
+                </div>
+            </div>
+            <h3 class="font-semibold text-lg mt-8 mb-4 text-blue-700">Emergency & Bank Details</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">Emergency Contact Name</label>
+                    <input type="text" name="emergency_contact_name" value="{{ profile.emergency_contact_name }}" class="w-full border rounded px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">Emergency Contact Phone</label>
+                    <input type="text" name="emergency_contact_phone" value="{{ profile.emergency_contact_phone }}" class="w-full border rounded px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">Bank Account Number</label>
+                    <input type="text" name="bank_account" value="{{ profile.bank_account_number }}" class="w-full border rounded px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">Bank IFSC</label>
+                    <input type="text" name="ifsc" value="{{ profile.bank_ifsc }}" class="w-full border rounded px-3 py-2">
+                </div>
+            </div>
+            <div class="mt-6">
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700 font-medium">Update Profile</button>
+            </div>
+        </form>
+    </div>
+    <div class="bg-white rounded-lg shadow p-6">
+        <h3 class="font-semibold text-lg mb-4 text-blue-700">Uploaded Documents</h3>
+        {% if documents %}
+        <ul class="divide-y divide-gray-100">
+            {% for doc in documents %}
+            <li class="py-3 flex justify-between items-center">
+                <span class="text-gray-800">{{ doc.document_type }}</span>
+                <a href="{{ doc.file.url }}" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm" target="_blank">View</a>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-gray-400">No documents uploaded.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

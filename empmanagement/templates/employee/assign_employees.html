@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}Assign Employees{% endblock %}
+{% block content %}
+<div class="max-w-xl mx-auto py-8 px-4">
+    <h2 class="text-2xl font-bold mb-6 text-blue-800">Assign Employees to {{ project.name }}</h2>
+    <form method="post" class="space-y-4 bg-white rounded-lg shadow p-6">
+        {% csrf_token %}
+        <div class="mb-4">
+            <label class="block text-gray-700 font-medium mb-1">Select Employees</label>
+            <select name="employees" multiple required class="w-full border rounded px-3 py-2">
+                {% for emp in employees %}
+                <option value="{{ emp.eID }}" {% if emp in project.employees.all %}selected{% endif %}>{{ emp.firstName }} {{ emp.lastName }} ({{ emp.eID }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="mt-6 flex justify-end">
+            <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700 font-medium">Assign</button>
+            <a href="{% url 'project_list' project.status|lower|stringformat:'s'|cut:'_' %}" class="ml-4 px-6 py-2 bg-gray-300 text-gray-700 rounded shadow hover:bg-gray-400 font-medium">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %} 

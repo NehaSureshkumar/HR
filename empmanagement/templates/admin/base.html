@@ -1,0 +1,10 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} | {% trans 'Employee Management System' %}{% endblock %}
+
+{% block branding %}
+<h1 id="site-name"><a href="{% url 'admin:index' %}">{% trans 'Employee Management System' %}</a></h1>
+{% endblock %}
+
+{% block nav-global %}{% endblock %} 

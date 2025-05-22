@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Edit Employee{% endblock %}
+{% block content %}
+<div class="max-w-xl mx-auto py-8 px-4">
+    <h2 class="text-2xl font-bold mb-6 text-blue-800">Edit Employee</h2>
+    <form method="post" class="space-y-4 bg-white rounded-lg shadow p-6">
+        {% csrf_token %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <label class="block text-gray-700 font-medium mb-1">First Name</label>
+                <input type="text" name="firstName" value="{{ employee.firstName }}" class="w-full border rounded px-3 py-2" required>
+            </div>
+            <div>
+                <label class="block text-gray-700 font-medium mb-1">Last Name</label>
+                <input type="text" name="lastName" value="{{ employee.lastName }}" class="w-full border rounded px-3 py-2" required>
+            </div>
+            <div>
+                <label class="block text-gray-700 font-medium mb-1">Email</label>
+                <input type="email" name="email" value="{{ employee.email }}" class="w-full border rounded px-3 py-2" required>
+            </div>
+            <div>
+                <label class="block text-gray-700 font-medium mb-1">Phone</label>
+                <input type="text" name="phoneNo" value="{{ employee.phoneNo }}" class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-gray-700 font-medium mb-1">Department</label>
+                <input type="text" name="department" value="{{ employee.department }}" class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-gray-700 font-medium mb-1">Designation</label>
+                <input type="text" name="designation" value="{{ employee.designation }}" class="w-full border rounded px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-gray-700 font-medium mb-1">Salary</label>
+                <input type="text" name="salary" value="{{ employee.salary }}" class="w-full border rounded px-3 py-2">
+            </div>
+        </div>
+        <div class="mt-6 flex justify-end">
+            <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700 font-medium">Update</button>
+            <a href="{% url 'employee_list' %}" class="ml-4 px-6 py-2 bg-gray-300 text-gray-700 rounded shadow hover:bg-gray-400 font-medium">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %} 

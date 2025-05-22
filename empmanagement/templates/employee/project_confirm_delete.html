@@ -1,0 +1,17 @@
+{% extends 'employee/base.html' %}
+{% block title %}Delete Project - Employee Management System{% endblock %}
+{% block content %}
+<div class="max-w-lg mx-auto py-12 px-4">
+    <div class="bg-white rounded-lg shadow-lg p-8">
+        <h2 class="text-2xl font-bold mb-4 text-red-700">Delete Project</h2>
+        <p class="mb-6 text-gray-700">Are you sure you want to delete the project <span class="font-semibold">{{ project.name }}</span>? This action cannot be undone.</p>
+        <form method="post">
+            {% csrf_token %}
+            <div class="flex justify-end gap-2">
+                <a href="javascript:history.back()" class="px-6 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 font-medium">Cancel</a>
+                <button type="submit" class="px-6 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-medium">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %} 

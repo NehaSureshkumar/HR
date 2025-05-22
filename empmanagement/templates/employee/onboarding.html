@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Onboarding - Employee Management System{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Welcome! Complete Your Onboarding</h4>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h5>Profile Completion: {{ profile_completion }}%</h5>
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" style="width: {{ profile_completion }}%" 
+                                 aria-valuenow="{{ profile_completion }}" aria-valuemin="0" aria-valuemax="100">
+                            </div>
+                        </div>
+                    </div>
+                    <form method="POST" class="space-y-4 bg-white rounded-lg shadow p-6">
+                        {% csrf_token %}
+                        <div>
+                            <label for="id_firstName" class="block text-gray-700 font-medium mb-1">First Name</label>
+                            {{ form.firstName }}
+                        </div>
+                        <div>
+                            <label for="id_lastName" class="block text-gray-700 font-medium mb-1">Last Name</label>
+                            {{ form.lastName }}
+                        </div>
+                        <div>
+                            <label for="id_phoneNo" class="block text-gray-700 font-medium mb-1">Phone Number</label>
+                            {{ form.phoneNo }}
+                        </div>
+                        <div>
+                            <label for="id_email" class="block text-gray-700 font-medium mb-1">Email</label>
+                            {{ form.email }}
+                        </div>
+                        <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700 font-medium">Complete Onboarding</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

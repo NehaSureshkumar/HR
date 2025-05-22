@@ -1,0 +1,133 @@
+{% extends 'employee/base.html' %}
+
+{% block content %}
+<section class="home">
+    <div class="text">
+        Verify Document
+    </div>
+    
+    <div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="bg-white shadow sm:rounded-lg">
+            <div class="px-4 py-5 sm:p-6">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
+                    Document Details
+                </h3>
+                
+                <div class="mt-5 border-t border-gray-200">
+                    <dl class="divide-y divide-gray-200">
+                        <div class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4">
+                            <dt class="text-sm font-medium text-gray-500">Employee Name</dt>
+                            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                {{ document.employee.firstName }} {{ document.employee.lastName }}
+                            </dd>
+                        </div>
+                        <div class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4">
+                            <dt class="text-sm font-medium text-gray-500">Employee ID</dt>
+                            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                {{ document.employee.eID }}
+                            </dd>
+                        </div>
+                        <div class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4">
+                            <dt class="text-sm font-medium text-gray-500">Document Type</dt>
+                            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                {{ document.get_document_type_display }}
+                            </dd>
+                        </div>
+                        <div class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4">
+                            <dt class="text-sm font-medium text-gray-500">Upload Date</dt>
+                            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                {{ document.uploaded_at|date:"M d, Y" }}
+                            </dd>
+                        </div>
+                        <div class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4">
+                            <dt class="text-sm font-medium text-gray-500">Current Status</dt>
+                            <dd class="mt-1 text-sm sm:mt-0 sm:col-span-2">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                    {% if document.status == 'APPROVED' %}bg-green-100 text-green-800
+                                    {% elif document.status == 'REJECTED' %}bg-red-100 text-red-800
+                                    {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                    {{ document.status }}
+                                </span>
+                            </dd>
+                        </div>
+                        {% if document.verified_by %}
+                        <div class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4">
+                            <dt class="text-sm font-medium text-gray-500">Last Verified By</dt>
+                            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                {{ document.verified_by.username }} on {{ document.verified_at|date:"M d, Y" }}
+                            </dd>
+                        </div>
+                        {% endif %}
+                    </dl>
+                </div>
+
+                <div class="mt-6">
+                    <h4 class="text-sm font-medium text-gray-900">Document Preview</h4>
+                    <div class="mt-2 border-2 border-gray-300 border-dashed rounded-lg p-6 text-center">
+                        {% if document.file.url|lower|slice:"-4:" == ".pdf" %}
+                        <object data="{{ document.file.url }}" type="application/pdf" width="100%" height="600px">
+                            <p>Unable to display PDF file. <a href="{{ document.file.url }}" target="_blank">Download</a> instead.</p>
+                        </object>
+                        {% else %}
+                        <img src="{{ document.file.url }}" alt="Document Preview" class="max-w-full h-auto mx-auto">
+                        {% endif %}
+                    </div>
+                </div>
+
+                <form method="POST" class="mt-6 space-y-6">
+                    {% csrf_token %}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">
+                            Verification Status
+                        </label>
+                        <select name="status" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
+                            <option value="APPROVED">Approve</option>
+                            <option value="REJECTED">Reject</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">
+                            Comments
+                        </label>
+                        <div class="mt-1">
+                            <textarea name="comments" rows="3" class="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md">{{ document.comments }}</textarea>
+                        </div>
+                        <p class="mt-2 text-sm text-gray-500">
+                            Add any notes or reasons for approval/rejection.
+                        </p>
+                    </div>
+                    
+                    {% if messages %}
+                    <div class="rounded-md bg-red-50 p-4">
+                        <div class="flex">
+                            <div class="ml-3">
+                                <h3 class="text-sm font-medium text-red-800">
+                                    Error
+                                </h3>
+                                <div class="mt-2 text-sm text-red-700">
+                                    <ul role="list" class="list-disc pl-5 space-y-1">
+                                        {% for message in messages %}
+                                        <li>{{ message }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="flex justify-end">
+                        <a href="{% url 'document_verification' %}" class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            Cancel
+                        </a>
+                        <button type="submit" class="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            Submit Verification
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %} 

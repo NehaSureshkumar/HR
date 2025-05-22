@@ -1,0 +1,23 @@
+{% extends 'employee/base.html' %}
+
+{% block title %}Notifications - Employee Management System{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto py-8 px-4">
+    <h2 class="text-3xl font-bold mb-8 text-blue-800">Notifications</h2>
+    <div class="bg-white rounded-lg shadow p-6">
+        {% if notifications %}
+        <ul class="divide-y divide-gray-100">
+            {% for notification in notifications %}
+            <li class="py-3 flex justify-between items-center">
+                <span class="text-gray-800">{{ notification.message }}</span>
+                <span class="text-sm text-gray-500">{{ notification.created_at|date:"M d, Y H:i" }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-gray-400">No notifications found.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Payroll Records</h2>
+    {% if user.is_staff %}
+    <a href="{% url 'generate_payroll' %}" class="btn btn-primary mb-3">Generate Payroll</a>
+    {% endif %}
+    
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Employee</th>
+                    <th>Month</th>
+                    <th>Basic Salary</th>
+                    <th>Allowances</th>
+                    <th>Deductions</th>
+                    <th>Net Salary</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in payroll_records %}
+                <tr>
+                    <td>{{ record.employee.firstname }} {{ record.employee.lastname }}</td>
+                    <td>{{ record.month|date:"F Y" }}</td>
+                    <td>₹{{ record.basic_salary }}</td>
+                    <td>₹{{ record.allowances }}</td>
+                    <td>₹{{ record.deductions }}</td>
+                    <td>₹{{ record.net_salary }}</td>
+                    <td>
+                        <span class="badge {% if record.status == 'PAID' %}bg-success{% elif record.status == 'PROCESSED' %}bg-info{% else %}bg-warning{% endif %}">
+                            {{ record.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="#" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#payrollModal{{ record.id }}">
+                            View Details
+                        </a>
+                        {% if user.is_staff and record.status == 'PENDING' %}
+                        <form method="post" action="{% url 'process_payroll' record.id %}" style="display:inline;">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success btn-sm">Mark as Processed</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                
+                <!-- Payroll Details Modal -->
+                <div class="modal fade" id="payrollModal{{ record.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Payroll Details</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p><strong>Employee:</strong> {{ record.employee.firstname }} {{ record.employee.lastname }}</p>
+                                        <p><strong>Month:</strong> {{ record.month|date:"F Y" }}</p>
+                                        <p><strong>Status:</strong> {{ record.get_status_display }}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p><strong>Basic Salary:</strong> ₹{{ record.basic_salary }}</p>
+                                        <p><strong>Allowances:</strong> ₹{{ record.allowances }}</p>
+                                        <p><strong>Deductions:</strong> ₹{{ record.deductions }}</p>
+                                        <p><strong>Net Salary:</strong> ₹{{ record.net_salary }}</p>
+                                    </div>
+                                </div>
+                                {% if record.payment_date %}
+                                <div class="mt-3">
+                                    <p><strong>Payment Date:</strong> {{ record.payment_date }}</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                {% if user.is_staff and record.status == 'PENDING' %}
+                                <button type="button" class="btn btn-success" onclick="markAsProcessed({{ record.id }})">Mark as Processed</button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center">No payroll records found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    function markAsProcessed(recordId) {
+        if (confirm('Are you sure you want to mark this payroll record as processed?')) {
+            // Add AJAX call to update status
+            fetch(`/payroll/${recordId}/process/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error processing payroll record.');
+                }
+            });
+        }
+    }
+</script>
+{% endblock %}
+{% endblock %} 

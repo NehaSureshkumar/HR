@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Notice Details - Employee Management System{% endblock %}
+{% block content %}
+<div class="container mx-auto py-6">
+    <div class="card">
+        <div class="card-header border-b pb-2 mb-2 flex justify-between items-center">
+            <div>
+                <h2 class="text-2xl font-bold mb-1">{{ noticedetail.title }}</h2>
+                <div class="text-sm text-gray-500">{{ noticedetail.publishDate|date:"M d, Y H:i" }} | {{ noticedetail.tag }}</div>
+            </div>
+            {% if user.is_staff or noticedetail.created_by == user %}
+            <form method="post" action="{% url 'delete_notice' noticedetail.Id %}" onsubmit="return confirm('Delete this notice?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+            </form>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            <p class="mb-4">{{ noticedetail.description }}</p>
+            {% if noticedetail.attachment %}
+            <div class="mb-4">
+                <a href="{{ noticedetail.attachment.url }}" class="btn btn-outline-primary" target="_blank">Download Attachment</a>
+            </div>
+            {% endif %}
+            <a href="{% url 'notice' %}" class="btn btn-secondary">Back to Notices</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

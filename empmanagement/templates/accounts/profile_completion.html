@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="text-center">Complete Your Profile</h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{% url 'profile_completion' %}">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="phone" class="form-label">Phone Number</label>
+                            <input type="tel" class="form-control" id="phone" name="phone" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="emergency_contact_name" class="form-label">Emergency Contact Name</label>
+                            <input type="text" class="form-control" id="emergency_contact_name" name="emergency_contact_name" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="emergency_contact_phone" class="form-label">Emergency Contact Phone</label>
+                            <input type="tel" class="form-control" id="emergency_contact_phone" name="emergency_contact_phone" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="bank_account" class="form-label">Bank Account Number</label>
+                            <input type="text" class="form-control" id="bank_account" name="bank_account" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="ifsc" class="form-label">IFSC Code</label>
+                            <input type="text" class="form-control" id="ifsc" name="ifsc" required>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Complete Profile</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

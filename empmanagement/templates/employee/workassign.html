@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<section class="home">
+    <div class="work-assign-container">
+        <div class="section-header">
+            <h1>Assign Work</h1>
+        </div>
+
+        {% if flag %}
+        <div class="alert {% if 'Invalid' in flag %}alert-error{% else %}alert-success{% endif %}">
+            {{ flag }}
+        </div>
+        {% endif %}
+
+        <div class="work-form-container">
+            <form method="POST" class="work-form">
+                {% csrf_token %}
+                
+                <div class="form-group">
+                    <label>Assigner ID</label>
+                    {{ form.assignerId }}
+                </div>
+
+                <div class="form-group">
+                    <label>Assign To (Employee ID)</label>
+                    {{ form.taskerId }}
+                </div>
+
+                <div class="form-group">
+                    <label>Work Details</label>
+                    {{ form.work }}
+                </div>
+
+                <div class="form-group">
+                    <label>Assign Date</label>
+                    {{ form.assignDate }}
+                </div>
+
+                <div class="form-group">
+                    <label>Due Date</label>
+                    {{ form.dueDate }}
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="submit-button">Assign Work</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+
+<style>
+.work-assign-container {
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.section-header {
+    margin-bottom: 30px;
+}
+
+.section-header h1 {
+    font-size: 24px;
+    color: #2d3748;
+}
+
+.alert {
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.alert-success {
+    background-color: #c6f6d5;
+    color: #2f855a;
+}
+
+.alert-error {
+    background-color: #fed7d7;
+    color: #c53030;
+}
+
+.work-form-container {
+    background-color: white;
+    padding: 24px;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: #4a5568;
+    font-weight: 500;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.form-group textarea {
+    height: 120px;
+    resize: vertical;
+}
+
+.form-actions {
+    margin-top: 24px;
+}
+
+.submit-button {
+    background-color: #4299e1;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.submit-button:hover {
+    background-color: #3182ce;
+}
+</style>
+{% endblock %}

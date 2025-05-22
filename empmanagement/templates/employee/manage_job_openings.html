@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<section class="home">
+    <div class="job-openings-manager">
+        <div class="section-header">
+            <h1>Manage Job Openings</h1>
+            <button onclick="showAddForm()" class="action-button">Add New Opening</button>
+        </div>
+
+        <!-- Add Job Opening Form -->
+        <div id="addJobForm" class="job-form" style="display: none;">
+            <form method="POST" class="add-job-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add">
+                
+                <div class="form-group">
+                    <label for="title">Job Title</label>
+                    <input type="text" id="title" name="title" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="department">Department</label>
+                    <select id="department" name="department" required>
+                        {% for code, name in departments %}
+                        <option value="{{ code }}">{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="positions">Number of Positions</label>
+                    <input type="number" id="positions" name="positions" min="1" value="1" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Job Description</label>
+                    <textarea id="description" name="description" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="requirements">Requirements</label>
+                    <textarea id="requirements" name="requirements" required></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="submit-button">Create Job Opening</button>
+                    <button type="button" onclick="hideAddForm()" class="cancel-button">Cancel</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Job Openings List -->
+        <div class="job-openings-list">
+            {% for job in job_openings %}
+            <div class="job-opening-card">
+                <div class="job-header">
+                    <h3>{{ job.title }}</h3>
+                    <span class="status-badge {{ job.status|lower }}">{{ job.get_status_display }}</span>
+                </div>
+                
+                <div class="job-details">
+                    <p><strong>Department:</strong> {{ job.get_department_display }}</p>
+                    <p><strong>Positions:</strong> {{ job.positions }}</p>
+                    <p><strong>Posted:</strong> {{ job.created_at|date:"M d, Y" }}</p>
+                </div>
+
+                <div class="job-description">
+                    <h4>Description</h4>
+                    <p>{{ job.description }}</p>
+                </div>
+
+                <div class="job-requirements">
+                    <h4>Requirements</h4>
+                    <p>{{ job.requirements }}</p>
+                </div>
+
+                <div class="job-actions">
+                    <form method="POST" class="status-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="update">
+                        <input type="hidden" name="job_id" value="{{ job.id }}">
+                        <select name="status" onchange="this.form.submit()">
+                            <option value="OPEN" {% if job.status == 'OPEN' %}selected{% endif %}>Open</option>
+                            <option value="CLOSED" {% if job.status == 'CLOSED' %}selected{% endif %}>Closed</option>
+                            <option value="ON_HOLD" {% if job.status == 'ON_HOLD' %}selected{% endif %}>On Hold</option>
+                        </select>
+                    </form>
+                </div>
+            </div>
+            {% empty %}
+            <div class="no-jobs">
+                <p>No job openings found.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<style>
+.job-openings-manager {
+    padding: 20px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.action-button {
+    background-color: #4299e1;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.job-form {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #4a5568;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+}
+
+.form-group textarea {
+    height: 100px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.submit-button {
+    background-color: #48bb78;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.cancel-button {
+    background-color: #e53e3e;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.job-opening-card {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.job-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.status-badge {
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 14px;
+    color: white;
+}
+
+.status-badge.open { background-color: #48bb78; }
+.status-badge.closed { background-color: #e53e3e; }
+.status-badge.on_hold { background-color: #ecc94b; }
+
+.job-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.job-description,
+.job-requirements {
+    margin-bottom: 15px;
+}
+
+.job-description h4,
+.job-requirements h4 {
+    color: #4a5568;
+    margin-bottom: 5px;
+}
+
+.job-actions {
+    border-top: 1px solid #e2e8f0;
+    padding-top: 15px;
+    margin-top: 15px;
+}
+
+.job-actions select {
+    padding: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 5px;
+    background-color: white;
+}
+</style>
+
+<script>
+function showAddForm() {
+    document.getElementById('addJobForm').style.display = 'block';
+}
+
+function hideAddForm() {
+    document.getElementById('addJobForm').style.display = 'none';
+}
+</script>
+{% endblock %} 

@@ -1,0 +1,360 @@
+from pyexpat import model
+from django.db import models
+from django.contrib.auth.models import User
+from pickle import TRUE
+from turtle import title
+from django.db import models
+from django.utils import timezone
+from django.contrib.postgres.fields import JSONField  # For JSON storage (if using Postgres)
+
+# Role choices
+ROLE_CHOICES = (
+    ('ADMIN', 'Admin'),
+    ('HR', 'HR'),
+    ('EMPLOYEE', 'Employee'),
+)
+
+# Document types
+DOCUMENT_TYPES = (
+    ('PAN', 'PAN Card'),
+    ('AADHAR', 'Aadhar Card'),
+    ('RESUME', 'Resume'),
+    ('PASSPORT', 'Passport'),
+    ('BANK', 'Bank Documents'),
+    ('PF', 'PF Documents'),
+    ('OTHER', 'Other'),
+)
+
+# Document status
+DOCUMENT_STATUS = (
+    ('PENDING', 'Pending'),
+    ('APPROVED', 'Approved'),
+    ('REJECTED', 'Rejected'),
+)
+
+NOTICE_TAGS = (
+    ('PROJECT', 'Project'),
+    ('GENERAL', 'General'),
+    ('HR', 'HR'),
+    ('OTHER', 'Other'),
+)
+
+designations_opt = (
+    ('Team Leader','Team Leader'),
+    ('Project Manager','Project Manager'),
+    ('Senior Developer','Senior Developer'),
+    ('Junior Developer','Junior Developer'),
+    ('Intern','Intern'),
+    ('QA Tester','QA Tester')
+)
+
+months = (
+    ('January','January'),
+    ('February','February'),
+    ('March','March'),
+    ('April','April'),
+    ('May','May'),
+    ('June','June'),
+    ('July','July'),
+    ('August','August'),
+    ('September','September'),
+    ('October','October'),
+    ('November','November'),
+    ('December','December')
+)
+
+days = (('0','0'),('1','1'),('2','2'),('3','3'),('4','4'),('5','5'),('6','6'),('7','7'),('8','8'),('9','9'),('10','10'),
+('11','11'),('12','12'),('13','13'),('14','14'),('15','15'),('16','16'),('17','17'),('18','18'),('19','19'),('20','20'),
+('21','21'),('22','22'),('23','23'),('24','24'),('25','25'),('26','26'),('27','27'),('28','28'),('29','29'),('30','30'),('31','31'))
+
+# Create your models here.
+
+class Employee(models.Model):
+    eID = models.CharField(primary_key=True,max_length=20)
+    firstName = models.CharField(max_length=50)
+    middleName = models.CharField(max_length=50)
+    lastName = models.CharField(max_length=50)
+    phoneNo = models.CharField(max_length=12,unique=True)
+    email = models.EmailField(max_length=70,unique=True)
+    addharNo = models.CharField(max_length=20,unique=True)
+    dOB = models.DateField()
+    designation = models.CharField(max_length=50,choices=designations_opt)
+    salary = models.CharField(max_length=20)
+    joinDate = models.DateField()
+
+    def __str__(self):  
+        return "%s %s" % (self.eID, self.firstName)
+
+class Attendance(models.Model):
+    eId = models.CharField(max_length=20)
+    date = models.DateField(default=timezone.now)
+    time_in = models.DateTimeField(default=timezone.now)
+    time_out = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=[
+        ('PRESENT', 'Present'),
+        ('ABSENT', 'Absent'),
+        ('HALF_DAY', 'Half Day'),
+        ('LATE', 'Late')
+    ], default='PRESENT')
+    overtime_hours = models.DecimalField(max_digits=4, decimal_places=2, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'employee_attendance'
+
+    def __str__(self):
+        return f"{self.eId} - {self.date}"
+
+class Notice(models.Model):
+    Id = models.CharField(primary_key=True,max_length=20)
+    title = models.CharField(max_length=250)
+    description = models.TextField()
+    publishDate = models.DateTimeField()
+    tag = models.CharField(max_length=20, choices=NOTICE_TAGS, default='GENERAL')
+    created_by = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    is_pinned = models.BooleanField(default=False)
+    attachment = models.FileField(upload_to='notice_attachments/', null=True, blank=True)
+    expiry_date = models.DateField(null=True, blank=True)
+
+    def __str__(self):
+        return self.title
+
+class NoticeComment(models.Model):
+    notice = models.ForeignKey(Notice, on_delete=models.CASCADE, related_name='comments')
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    comment = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Comment by {self.user.username} on {self.notice.title}"
+
+class workAssignments(models.Model):
+    Id = models.CharField(primary_key=True, max_length=20)
+    assignerId = models.ForeignKey(Employee,on_delete=models.CASCADE,related_name="assignerId")
+    work = models.TextField()
+    assignDate = models.DateTimeField()
+    dueDate = models.DateTimeField()
+    taskerId = models.ForeignKey(Employee,on_delete=models.CASCADE,related_name="taskerId") 
+
+class Requests(models.Model):
+    Id = models.CharField(primary_key=True, max_length=20)
+    requesterId = models.ForeignKey(Employee,on_delete=models.CASCADE,related_name="requesterId")
+    requestMessage = models.TextField()
+    requestDate = models.DateTimeField()
+    destinationEmployeeId = models.ForeignKey(Employee,on_delete=models.CASCADE,related_name="toEmployeeId") 
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='EMPLOYEE')
+    profile_completion = models.IntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+    emergency_contact_name = models.CharField(max_length=100, blank=True)
+    emergency_contact_phone = models.CharField(max_length=15, blank=True)
+    pf_number = models.CharField(max_length=20, blank=True)
+    bank_account_number = models.CharField(max_length=30, blank=True)
+    bank_ifsc = models.CharField(max_length=20, blank=True)
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.role}"
+
+class Document(models.Model):
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
+    document_type = models.CharField(max_length=20, choices=DOCUMENT_TYPES)
+    file = models.FileField(upload_to='employee_documents/')
+    status = models.CharField(max_length=20, choices=DOCUMENT_STATUS, default='PENDING')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    comments = models.TextField(blank=True)
+    
+    def __str__(self):
+        return f"{self.employee.eID} - {self.document_type}"
+
+class AuditLog(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    action = models.CharField(max_length=255)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    details = models.TextField()
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.action} - {self.timestamp}" 
+
+class JobOpening(models.Model):
+    STATUS_CHOICES = (
+        ('OPEN', 'Open'),
+        ('CLOSED', 'Closed'),
+        ('ON_HOLD', 'On Hold'),
+    )
+
+    title = models.CharField(max_length=100)
+    department = models.CharField(max_length=50, choices=designations_opt)
+    description = models.TextField()
+    requirements = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='OPEN')
+    positions = models.IntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    
+    def __str__(self):
+        return f"{self.title} ({self.department}) - {self.get_status_display()}"
+
+    class Meta:
+        ordering = ['-created_at'] 
+
+class PerformanceReview(models.Model):
+    employee = models.ForeignKey('Employee', on_delete=models.CASCADE)
+    reviewer = models.ForeignKey(User, on_delete=models.CASCADE)
+    review_date = models.DateField()
+    rating = models.IntegerField(choices=[(i, i) for i in range(1, 6)])
+    comments = models.TextField()
+    goals_achieved = models.TextField()
+    areas_of_improvement = models.TextField()
+    next_review_date = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'employee_performance_review'
+
+class Goal(models.Model):
+    employee = models.ForeignKey('Employee', on_delete=models.CASCADE)
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    start_date = models.DateField()
+    target_date = models.DateField()
+    status = models.CharField(max_length=20, choices=[
+        ('NOT_STARTED', 'Not Started'),
+        ('IN_PROGRESS', 'In Progress'),
+        ('COMPLETED', 'Completed'),
+        ('CANCELLED', 'Cancelled')
+    ])
+    progress = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'employee_goal'
+
+class LeaveRequest(models.Model):
+    eId = models.CharField(max_length=20)
+    leave_type = models.CharField(max_length=20, choices=[
+        ('ANNUAL', 'Annual Leave'),
+        ('SICK', 'Sick Leave'),
+        ('CASUAL', 'Casual Leave'),
+        ('MATERNITY', 'Maternity Leave'),
+        ('PATERNITY', 'Paternity Leave'),
+        ('UNPAID', 'Unpaid Leave')
+    ], default='ANNUAL')
+    start_date = models.DateField(default=timezone.now)
+    end_date = models.DateField(default=timezone.now)
+    reason = models.TextField(default='')
+    status = models.CharField(max_length=20, choices=[
+        ('PENDING', 'Pending'),
+        ('APPROVED', 'Approved'),
+        ('REJECTED', 'Rejected')
+    ], default='PENDING')
+    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'employee_leave_request'
+
+    def __str__(self):
+        return f"{self.eId} - {self.leave_type} ({self.start_date} to {self.end_date})"
+
+class TrainingProgram(models.Model):
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    start_date = models.DateField()
+    end_date = models.DateField()
+    capacity = models.IntegerField()
+    enrolled_count = models.IntegerField(default=0)
+    status = models.CharField(max_length=20, choices=[
+        ('UPCOMING', 'Upcoming'),
+        ('ONGOING', 'Ongoing'),
+        ('COMPLETED', 'Completed'),
+        ('CANCELLED', 'Cancelled')
+    ])
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'employee_training_program'
+
+class TrainingEnrollment(models.Model):
+    employee = models.ForeignKey('Employee', on_delete=models.CASCADE)
+    program = models.ForeignKey(TrainingProgram, on_delete=models.CASCADE)
+    status = models.CharField(max_length=20, choices=[
+        ('ENROLLED', 'Enrolled'),
+        ('COMPLETED', 'Completed'),
+        ('DROPPED', 'Dropped')
+    ])
+    completion_date = models.DateField(null=True, blank=True)
+    feedback = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'employee_training_enrollment'
+
+class Payroll(models.Model):
+    employee = models.ForeignKey('Employee', on_delete=models.CASCADE)
+    month = models.DateField()
+    basic_salary = models.DecimalField(max_digits=10, decimal_places=2)
+    allowances = models.DecimalField(max_digits=10, decimal_places=2)
+    deductions = models.DecimalField(max_digits=10, decimal_places=2)
+    net_salary = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, choices=[
+        ('PENDING', 'Pending'),
+        ('PROCESSED', 'Processed'),
+        ('PAID', 'Paid')
+    ])
+    payment_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'employee_payroll' 
+
+class ProfileUpdateRequest(models.Model):
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('APPROVED', 'Approved'),
+        ('REJECTED', 'Rejected'),
+    ]
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
+    requested_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='profile_update_requests')
+    proposed_changes = models.JSONField()  # Use JSONField for SQLite 3.9+ and Django 3.1+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='profile_update_reviews')
+    review_comments = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"{self.employee.eID} - {self.status}" 
+
+PROJECT_STATUS_CHOICES = [
+    ('ONGOING', 'Ongoing'),
+    ('AT_RISK', 'At Risk'),
+    ('UPCOMING', 'Upcoming'),
+    ('ON_SCHEDULE', 'On Schedule'),
+    ('COMPLETED', 'Completed'),
+]
+
+class Project(models.Model):
+    name = models.CharField(max_length=200)
+    status = models.CharField(max_length=20, choices=PROJECT_STATUS_CHOICES, default='ONGOING')
+    start_date = models.DateField()
+    end_date = models.DateField()
+    description = models.TextField(blank=True)
+    employees = models.ManyToManyField('Employee', related_name='projects', blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.get_status_display()})" 

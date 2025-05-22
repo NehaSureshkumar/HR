@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block title %}Report Download - Employee Management System{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto py-8 px-4">
+    <h2 class="text-3xl font-bold mb-8 text-blue-800">Download Reports</h2>
+    <div class="bg-white rounded-lg shadow p-6">
+        <h3 class="font-semibold text-lg mb-4 text-blue-700">Attendance Report</h3>
+        <form method="get" action="#">
+            <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700 font-medium" disabled>Export Attendance (CSV)</button>
+            <span class="ml-4 text-gray-400 text-sm">(Coming soon)</span>
+        </form>
+    </div>
+</div>
+{% endblock %} 
