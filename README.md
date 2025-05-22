@@ -115,7 +115,7 @@ empmanagement/
 - **Admin Interface**: http://127.0.0.1:8000/admin/
 - **Login Page**: http://127.0.0.1:8000/ems/accounts/login/
 - **Dashboard**: http://127.0.0.1:8000/ems/dashboard/
-- **Employee List**: http://127.0.0.1:8000/ems/employees/
+ ## - **Employee List**: http://127.0.0.1:8000/ems/employees/
 
 ## Configuration
 
