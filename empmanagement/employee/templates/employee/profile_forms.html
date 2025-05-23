@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Employee Profile Forms{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Employee Profile Forms</h2>
+    
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="accordion" id="formsAccordion">
+        <!-- Employee Information Form -->
+        <div class="card">
+            <div class="card-header" id="employeeInfoHeading">
+                <h2 class="mb-0">
+                    <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#employeeInfoCollapse">
+                        Employee Information
+                    </button>
+                </h2>
+            </div>
+            <div id="employeeInfoCollapse" class="collapse show" data-parent="#formsAccordion">
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="employee_info">
+                        {{ employee_info_form.as_p }}
+                        <button type="submit" class="btn btn-primary">Save Employee Information</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ID Card Form -->
+        <div class="card">
+            <div class="card-header" id="idCardHeading">
+                <h2 class="mb-0">
+                    <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#idCardCollapse">
+                        ID Card Information
+                    </button>
+                </h2>
+            </div>
+            <div id="idCardCollapse" class="collapse" data-parent="#formsAccordion">
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="id_card">
+                        {{ id_card_form.as_p }}
+                        <button type="submit" class="btn btn-primary">Save ID Card Information</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- WiFi Access Form -->
+        <div class="card">
+            <div class="card-header" id="wifiAccessHeading">
+                <h2 class="mb-0">
+                    <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#wifiAccessCollapse">
+                        WiFi Access Information
+                    </button>
+                </h2>
+            </div>
+            <div id="wifiAccessCollapse" class="collapse" data-parent="#formsAccordion">
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="wifi_access">
+                        {{ wifi_access_form.as_p }}
+                        <button type="submit" class="btn btn-primary">Save WiFi Access Information</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Parking Details Form -->
+        <div class="card">
+            <div class="card-header" id="parkingHeading">
+                <h2 class="mb-0">
+                    <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#parkingCollapse">
+                        Parking Details
+                    </button>
+                </h2>
+            </div>
+            <div id="parkingCollapse" class="collapse" data-parent="#formsAccordion">
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="parking">
+                        {{ parking_form.as_p }}
+                        <button type="submit" class="btn btn-primary">Save Parking Details</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Insurance Details Form -->
+        <div class="card">
+            <div class="card-header" id="insuranceHeading">
+                <h2 class="mb-0">
+                    <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#insuranceCollapse">
+                        Insurance Details
+                    </button>
+                </h2>
+            </div>
+            <div id="insuranceCollapse" class="collapse" data-parent="#formsAccordion">
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="insurance">
+                        {{ insurance_form.as_p }}
+                        <button type="submit" class="btn btn-primary">Save Insurance Details</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    // Add Bootstrap's JavaScript dependencies
+    $(document).ready(function() {
+        // Initialize tooltips
+        $('[data-toggle="tooltip"]').tooltip();
+        
+        // Form validation
+        $('form').on('submit', function(e) {
+            if (!this.checkValidity()) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            $(this).addClass('was-validated');
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %} 

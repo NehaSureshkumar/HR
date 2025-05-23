@@ -67,6 +67,62 @@ days = (('0','0'),('1','1'),('2','2'),('3','3'),('4','4'),('5','5'),('6','6'),('
 ('11','11'),('12','12'),('13','13'),('14','14'),('15','15'),('16','16'),('17','17'),('18','18'),('19','19'),('20','20'),
 ('21','21'),('22','22'),('23','23'),('24','24'),('25','25'),('26','26'),('27','27'),('28','28'),('29','29'),('30','30'),('31','31'))
 
+# Employment type choices
+EMPLOYMENT_TYPE_CHOICES = (
+    ('INTERN', 'Intern'),
+    ('FULL_TIME', 'Full-Time'),
+    ('CONSULTANT', 'Consultant'),
+)
+
+# Status choices
+STATUS_CHOICES = (
+    ('ACTIVE', 'Active'),
+    ('TERMINATED', 'Terminated'),
+)
+
+# Blood group choices
+BLOOD_GROUP_CHOICES = (
+    ('A+', 'A+'),
+    ('A-', 'A-'),
+    ('B+', 'B+'),
+    ('B-', 'B-'),
+    ('AB+', 'AB+'),
+    ('AB-', 'AB-'),
+    ('O+', 'O+'),
+    ('O-', 'O-'),
+)
+
+# Vehicle make choices
+VEHICLE_MAKE_CHOICES = (
+    ('TOYOTA', 'Toyota'),
+    ('HONDA', 'Honda'),
+    ('FORD', 'Ford'),
+    ('BMW', 'BMW'),
+    ('MERCEDES', 'Mercedes'),
+    ('AUDI', 'Audi'),
+    ('HYUNDAI', 'Hyundai'),
+    ('OTHER', 'Other'),
+)
+
+# Relationship choices
+RELATIONSHIP_CHOICES = (
+    ('SELF', 'Self'),
+    ('SPOUSE', 'Spouse'),
+    ('CHILD', 'Child'),
+)
+
+# Gender choices
+GENDER_CHOICES = (
+    ('MALE', 'Male'),
+    ('FEMALE', 'Female'),
+)
+
+# Endorsement type choices
+ENDORSEMENT_TYPE_CHOICES = (
+    ('A', 'A'),
+    ('D', 'D'),
+)
+
 # Create your models here.
 
 class Employee(models.Model):
@@ -358,3 +414,65 @@ class Project(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.get_status_display()})" 
+
+class EmployeeInformation(models.Model):
+    employee = models.OneToOneField(Employee, on_delete=models.CASCADE, primary_key=True)
+    title = models.CharField(max_length=50)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ACTIVE')
+    employment_type = models.CharField(max_length=20, choices=EMPLOYMENT_TYPE_CHOICES)
+    joining_date = models.DateField()
+    employment_type_at_hiring = models.CharField(max_length=20, choices=EMPLOYMENT_TYPE_CHOICES)
+    full_time_conversion_date = models.DateField(null=True, blank=True)
+    exit_date = models.DateField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.employee.eID} - {self.employee.firstName}"
+
+class IDCard(models.Model):
+    employee = models.OneToOneField(Employee, on_delete=models.CASCADE, primary_key=True)
+    title = models.CharField(max_length=50)
+    mobile_number = models.CharField(max_length=10)
+    blood_group = models.CharField(max_length=3, choices=BLOOD_GROUP_CHOICES)
+    emergency_contact_name = models.CharField(max_length=100)
+    emergency_contact_number = models.CharField(max_length=10)
+    address = models.TextField()
+
+    def __str__(self):
+        return f"{self.employee.eID} - {self.employee.firstName}"
+
+class WiFiAccess(models.Model):
+    employee = models.OneToOneField(Employee, on_delete=models.CASCADE, primary_key=True)
+    mobile_number = models.CharField(max_length=10)
+    access_card_number = models.CharField(max_length=20)
+
+    def __str__(self):
+        return f"{self.employee.eID} - {self.employee.firstName}"
+
+class ParkingDetails(models.Model):
+    employee = models.OneToOneField(Employee, on_delete=models.CASCADE, primary_key=True)
+    parking_status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='ACTIVE')
+    vehicle_number_plate = models.CharField(max_length=20)
+    vehicle_make = models.CharField(max_length=20, choices=VEHICLE_MAKE_CHOICES)
+    vehicle_year = models.IntegerField()
+    vehicle_color = models.CharField(max_length=50)
+
+    def __str__(self):
+        return f"{self.employee.eID} - {self.employee.firstName}"
+
+class InsuranceDetails(models.Model):
+    employee = models.OneToOneField(Employee, on_delete=models.CASCADE, primary_key=True)
+    mobile_number = models.CharField(max_length=10)
+    insured_name = models.CharField(max_length=100)
+    relationship = models.CharField(max_length=20, choices=RELATIONSHIP_CHOICES)
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES)
+    date_of_birth = models.DateField()
+    date_of_joining = models.DateField()
+    date_of_leaving = models.DateField(null=True, blank=True)
+    reason_for_leaving = models.TextField(null=True, blank=True)
+    sum_insured = models.DecimalField(max_digits=12, decimal_places=2)
+    endorsement_type = models.CharField(max_length=1, choices=ENDORSEMENT_TYPE_CHOICES)
+    critical_illness_maternity = models.BooleanField(default=False)
+    remarks = models.TextField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.employee.eID} - {self.employee.firstName}" 

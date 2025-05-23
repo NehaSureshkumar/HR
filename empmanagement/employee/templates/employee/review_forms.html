@@ -1,0 +1,328 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Review Employee Forms{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Review Forms for {{ employee.firstName }} {{ employee.lastName }}</h2>
+    
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="accordion" id="reviewAccordion">
+        <!-- Employee Information Review -->
+        <div class="card">
+            <div class="card-header" id="employeeInfoHeading">
+                <h2 class="mb-0">
+                    <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#employeeInfoCollapse">
+                        Employee Information
+                    </button>
+                </h2>
+            </div>
+            <div id="employeeInfoCollapse" class="collapse show" data-parent="#reviewAccordion">
+                <div class="card-body">
+                    {% if employee_info %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <tr>
+                                <th>Title</th>
+                                <td>{{ employee_info.title }}</td>
+                            </tr>
+                            <tr>
+                                <th>Status</th>
+                                <td>{{ employee_info.status }}</td>
+                            </tr>
+                            <tr>
+                                <th>Employment Type</th>
+                                <td>{{ employee_info.employment_type }}</td>
+                            </tr>
+                            <tr>
+                                <th>Joining Date</th>
+                                <td>{{ employee_info.joining_date }}</td>
+                            </tr>
+                            <tr>
+                                <th>Employment Type at Hiring</th>
+                                <td>{{ employee_info.employment_type_at_hiring }}</td>
+                            </tr>
+                            {% if employee_info.full_time_conversion_date %}
+                            <tr>
+                                <th>Full Time Conversion Date</th>
+                                <td>{{ employee_info.full_time_conversion_date }}</td>
+                            </tr>
+                            {% endif %}
+                            {% if employee_info.exit_date %}
+                            <tr>
+                                <th>Exit Date</th>
+                                <td>{{ employee_info.exit_date }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                    <form method="post" class="mt-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="employee_info">
+                        <div class="form-group">
+                            <label for="comments">Comments (for rejection)</label>
+                            <textarea name="comments" id="comments" class="form-control" rows="3"></textarea>
+                        </div>
+                        <button type="submit" name="action" value="approve" class="btn btn-success">Approve</button>
+                        <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
+                    </form>
+                    {% else %}
+                    <p class="text-muted">No employee information submitted yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- ID Card Review -->
+        <div class="card">
+            <div class="card-header" id="idCardHeading">
+                <h2 class="mb-0">
+                    <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#idCardCollapse">
+                        ID Card Information
+                    </button>
+                </h2>
+            </div>
+            <div id="idCardCollapse" class="collapse" data-parent="#reviewAccordion">
+                <div class="card-body">
+                    {% if id_card %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <tr>
+                                <th>Title</th>
+                                <td>{{ id_card.title }}</td>
+                            </tr>
+                            <tr>
+                                <th>Mobile Number</th>
+                                <td>{{ id_card.mobile_number }}</td>
+                            </tr>
+                            <tr>
+                                <th>Blood Group</th>
+                                <td>{{ id_card.blood_group }}</td>
+                            </tr>
+                            <tr>
+                                <th>Emergency Contact Name</th>
+                                <td>{{ id_card.emergency_contact_name }}</td>
+                            </tr>
+                            <tr>
+                                <th>Emergency Contact Number</th>
+                                <td>{{ id_card.emergency_contact_number }}</td>
+                            </tr>
+                            <tr>
+                                <th>Address</th>
+                                <td>{{ id_card.address }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <form method="post" class="mt-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="id_card">
+                        <div class="form-group">
+                            <label for="comments">Comments (for rejection)</label>
+                            <textarea name="comments" id="comments" class="form-control" rows="3"></textarea>
+                        </div>
+                        <button type="submit" name="action" value="approve" class="btn btn-success">Approve</button>
+                        <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
+                    </form>
+                    {% else %}
+                    <p class="text-muted">No ID card information submitted yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- WiFi Access Review -->
+        <div class="card">
+            <div class="card-header" id="wifiAccessHeading">
+                <h2 class="mb-0">
+                    <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#wifiAccessCollapse">
+                        WiFi Access Information
+                    </button>
+                </h2>
+            </div>
+            <div id="wifiAccessCollapse" class="collapse" data-parent="#reviewAccordion">
+                <div class="card-body">
+                    {% if wifi_access %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <tr>
+                                <th>Mobile Number</th>
+                                <td>{{ wifi_access.mobile_number }}</td>
+                            </tr>
+                            <tr>
+                                <th>Access Card Number</th>
+                                <td>{{ wifi_access.access_card_number }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <form method="post" class="mt-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="wifi_access">
+                        <div class="form-group">
+                            <label for="comments">Comments (for rejection)</label>
+                            <textarea name="comments" id="comments" class="form-control" rows="3"></textarea>
+                        </div>
+                        <button type="submit" name="action" value="approve" class="btn btn-success">Approve</button>
+                        <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
+                    </form>
+                    {% else %}
+                    <p class="text-muted">No WiFi access information submitted yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Parking Details Review -->
+        <div class="card">
+            <div class="card-header" id="parkingHeading">
+                <h2 class="mb-0">
+                    <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#parkingCollapse">
+                        Parking Details
+                    </button>
+                </h2>
+            </div>
+            <div id="parkingCollapse" class="collapse" data-parent="#reviewAccordion">
+                <div class="card-body">
+                    {% if parking %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <tr>
+                                <th>Parking Status</th>
+                                <td>{{ parking.parking_status }}</td>
+                            </tr>
+                            <tr>
+                                <th>Vehicle Number Plate</th>
+                                <td>{{ parking.vehicle_number_plate }}</td>
+                            </tr>
+                            <tr>
+                                <th>Vehicle Make</th>
+                                <td>{{ parking.vehicle_make }}</td>
+                            </tr>
+                            <tr>
+                                <th>Vehicle Year</th>
+                                <td>{{ parking.vehicle_year }}</td>
+                            </tr>
+                            <tr>
+                                <th>Vehicle Color</th>
+                                <td>{{ parking.vehicle_color }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <form method="post" class="mt-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="parking">
+                        <div class="form-group">
+                            <label for="comments">Comments (for rejection)</label>
+                            <textarea name="comments" id="comments" class="form-control" rows="3"></textarea>
+                        </div>
+                        <button type="submit" name="action" value="approve" class="btn btn-success">Approve</button>
+                        <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
+                    </form>
+                    {% else %}
+                    <p class="text-muted">No parking details submitted yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Insurance Details Review -->
+        <div class="card">
+            <div class="card-header" id="insuranceHeading">
+                <h2 class="mb-0">
+                    <button class="btn btn-link collapsed" type="button" data-toggle="collapse" data-target="#insuranceCollapse">
+                        Insurance Details
+                    </button>
+                </h2>
+            </div>
+            <div id="insuranceCollapse" class="collapse" data-parent="#reviewAccordion">
+                <div class="card-body">
+                    {% if insurance %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <tr>
+                                <th>Mobile Number</th>
+                                <td>{{ insurance.mobile_number }}</td>
+                            </tr>
+                            <tr>
+                                <th>Insured Name</th>
+                                <td>{{ insurance.insured_name }}</td>
+                            </tr>
+                            <tr>
+                                <th>Relationship</th>
+                                <td>{{ insurance.relationship }}</td>
+                            </tr>
+                            <tr>
+                                <th>Gender</th>
+                                <td>{{ insurance.gender }}</td>
+                            </tr>
+                            <tr>
+                                <th>Date of Birth</th>
+                                <td>{{ insurance.date_of_birth }}</td>
+                            </tr>
+                            <tr>
+                                <th>Date of Joining</th>
+                                <td>{{ insurance.date_of_joining }}</td>
+                            </tr>
+                            {% if insurance.date_of_leaving %}
+                            <tr>
+                                <th>Date of Leaving</th>
+                                <td>{{ insurance.date_of_leaving }}</td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <th>Sum Insured</th>
+                                <td>{{ insurance.sum_insured }}</td>
+                            </tr>
+                            <tr>
+                                <th>Endorsement Type</th>
+                                <td>{{ insurance.endorsement_type }}</td>
+                            </tr>
+                            <tr>
+                                <th>Critical Illness/Maternity</th>
+                                <td>{{ insurance.critical_illness_maternity|yesno:"Yes,No" }}</td>
+                            </tr>
+                            {% if insurance.remarks %}
+                            <tr>
+                                <th>Remarks</th>
+                                <td>{{ insurance.remarks }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                    <form method="post" class="mt-3">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="insurance">
+                        <div class="form-group">
+                            <label for="comments">Comments (for rejection)</label>
+                            <textarea name="comments" id="comments" class="form-control" rows="3"></textarea>
+                        </div>
+                        <button type="submit" name="action" value="approve" class="btn btn-success">Approve</button>
+                        <button type="submit" name="action" value="reject" class="btn btn-danger">Reject</button>
+                    </form>
+                    {% else %}
+                    <p class="text-muted">No insurance details submitted yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Initialize tooltips
+        $('[data-toggle="tooltip"]').tooltip();
+    });
+</script>
+{% endblock %}
+{% endblock %} 

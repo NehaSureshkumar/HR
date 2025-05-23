@@ -4,7 +4,7 @@ from employee.models import (
     Employee, Attendance, Notice, workAssignments, 
     Document, UserProfile, AuditLog, JobOpening,
     designations_opt, DOCUMENT_TYPES, PerformanceReview, Goal, LeaveRequest,
-    TrainingProgram, TrainingEnrollment, Payroll, Project
+    TrainingProgram, TrainingEnrollment, Payroll, Project, EmployeeInformation, IDCard, WiFiAccess, ParkingDetails, InsuranceDetails, ProfileUpdateRequest
 )
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -271,6 +271,14 @@ def profile(request):
             )
         created = True
     documents = Document.objects.filter(employee=employee)
+    
+    # Initialize forms for the new sections
+    employee_info_form = EmployeeInformationForm(instance=getattr(employee, 'employeeinformation', None))
+    id_card_form = IDCardForm(instance=getattr(employee, 'idcard', None))
+    wifi_access_form = WiFiAccessForm(instance=getattr(employee, 'wifiaccess', None))
+    parking_form = ParkingDetailsForm(instance=getattr(employee, 'parkingdetails', None))
+    insurance_form = InsuranceDetailsForm(instance=getattr(employee, 'insurancedetails', None))
+    
     if request.method == "POST":
         # Update profile information
         employee.phoneNo = request.POST.get('phone')
@@ -295,18 +303,49 @@ def profile(request):
         user_profile.save()
         messages.success(request, "Profile updated successfully!")
         return redirect('profile')
-    return render(request, "employee/profile.html", {
+        
+    context = {
         'profile': user_profile,
         'employee': employee,
-        'documents': documents
-    })
+        'documents': documents,
+        'employee_info_form': employee_info_form,
+        'id_card_form': id_card_form,
+        'wifi_access_form': wifi_access_form,
+        'parking_form': parking_form,
+        'insurance_form': insurance_form,
+    }
+    return render(request, "employee/profile.html", context)
 
 @login_required
 @role_required(['EMPLOYEE'])
 def my_documents(request):
     employee = get_object_or_404(Employee, eID=request.user.username)
     documents = employee.document_set.all().order_by('-uploaded_at')
-    return render(request, 'employee/my_documents.html', {'documents': documents})
+
+    # Helper to get status for each info section
+    def get_info_status(attr, form_type):
+        req = ProfileUpdateRequest.objects.filter(
+            employee=employee,
+            proposed_changes__has_key=form_type  # If using PostgreSQL JSONField
+        ).order_by('-reviewed_at').first()
+        if req:
+            return req.status
+        if hasattr(employee, attr):
+            return 'Submitted'
+        return 'Not Submitted'
+
+    info_statuses = {
+        'Employee Information': get_info_status('employeeinformation', 'employee_info'),
+        'ID Card': get_info_status('idcard', 'id_card'),
+        'WiFi Access': get_info_status('wifiaccess', 'wifi_access'),
+        'Parking Details': get_info_status('parkingdetails', 'parking'),
+        'Insurance Details': get_info_status('insurancedetails', 'insurance'),
+    }
+
+    return render(request, 'employee/my_documents.html', {
+        'documents': documents,
+        'info_statuses': info_statuses,
+    })
 
 @login_required(login_url='/')
 def upload_document(request):
@@ -341,17 +380,62 @@ def upload_document(request):
 @login_required(login_url='/')
 @role_required(['ADMIN', 'HR'])
 def document_verification(request):
-    status_filter = request.GET.get('status', 'PENDING')
-    documents = Document.objects.filter(status=status_filter).order_by('-uploaded_at')
-    paginator = Paginator(documents, 10)
+    status_filter = request.GET.get('status', 'all')
+    
+    # Get all employees
+    employees = Employee.objects.all().order_by('-joinDate')
+    
+    # Add validation status to each employee
+    for employee in employees:
+        # Document status
+        documents = Document.objects.filter(employee=employee)
+        doc_count = documents.count()
+        
+        # Form status
+        pending_updates = ProfileUpdateRequest.objects.filter(
+            employee=employee,
+            status='PENDING'
+        ).exists()
+        
+        has_employee_info = hasattr(employee, 'employeeinformation')
+        has_id_card = hasattr(employee, 'idcard')
+        has_wifi_access = hasattr(employee, 'wifiaccess')
+        has_parking = hasattr(employee, 'parkingdetails')
+        has_insurance = hasattr(employee, 'insurancedetails')
+        
+        # Determine form validation status
+        if pending_updates:
+            employee.validation_status = 'PENDING'
+        elif all([has_employee_info, has_id_card, has_wifi_access, has_parking, has_insurance]):
+            employee.validation_status = 'APPROVED'
+        else:
+            employee.validation_status = 'INCOMPLETE'
+        
+        # Determine overall status
+        if doc_count == 0 or employee.validation_status == 'INCOMPLETE':
+            employee.overall_status = 'INCOMPLETE'
+        elif pending_updates or documents.filter(status='PENDING').exists():
+            employee.overall_status = 'PENDING'
+        elif doc_count >= 3 and employee.validation_status == 'APPROVED' and not documents.filter(status='REJECTED').exists():
+            employee.overall_status = 'APPROVED'
+        else:
+            employee.overall_status = 'PENDING'
+    
+    # Filter employees based on status
+    if status_filter != 'all':
+        employees = [emp for emp in employees if emp.overall_status == status_filter]
+    
+    # Pagination
+    paginator = Paginator(employees, 10)
     page = request.GET.get('page')
-    documents = paginator.get_page(page)
-    is_hr_admin = request.user.userprofile.role in ['ADMIN', 'HR'] if hasattr(request.user, 'userprofile') else False
-    return render(request, "employee/document_verification.html", {
-        'documents': documents,
+    employees = paginator.get_page(page)
+    
+    context = {
+        'employees': employees,
         'status_filter': status_filter,
-        'is_hr_admin': is_hr_admin,
-    })
+        'is_hr_admin': True,
+    }
+    return render(request, "employee/document_verification.html", context)
 
 @login_required(login_url='/')
 @role_required(['ADMIN', 'HR'])
@@ -1328,3 +1412,205 @@ class EmployeeViewSet(viewsets.ReadOnlyModelViewSet):
 class ProjectViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Project.objects.all()
     serializer_class = ProjectSerializer
+
+@login_required
+def employee_profile_forms(request):
+    """View to handle all employee profile forms"""
+    employee = get_object_or_404(Employee, eID=request.user.username)
+    
+    # Initialize forms
+    employee_info_form = EmployeeInformationForm(instance=getattr(employee, 'employeeinformation', None))
+    id_card_form = IDCardForm(instance=getattr(employee, 'idcard', None))
+    wifi_access_form = WiFiAccessForm(instance=getattr(employee, 'wifiaccess', None))
+    parking_form = ParkingDetailsForm(instance=getattr(employee, 'parkingdetails', None))
+    insurance_form = InsuranceDetailsForm(instance=getattr(employee, 'insurancedetails', None))
+    
+    if request.method == 'POST':
+        form_type = request.POST.get('form_type')
+        
+        if form_type == 'employee_info':
+            form = EmployeeInformationForm(request.POST, instance=getattr(employee, 'employeeinformation', None))
+            if form.is_valid():
+                info = form.save(commit=False)
+                info.employee = employee
+                info.save()
+                messages.success(request, 'Employee information updated successfully!')
+                return redirect('employee_profile_forms')
+                
+        elif form_type == 'id_card':
+            form = IDCardForm(request.POST, instance=getattr(employee, 'idcard', None))
+            if form.is_valid():
+                id_card = form.save(commit=False)
+                id_card.employee = employee
+                id_card.save()
+                messages.success(request, 'ID Card information updated successfully!')
+                return redirect('employee_profile_forms')
+                
+        elif form_type == 'wifi_access':
+            form = WiFiAccessForm(request.POST, instance=getattr(employee, 'wifiaccess', None))
+            if form.is_valid():
+                wifi = form.save(commit=False)
+                wifi.employee = employee
+                wifi.save()
+                messages.success(request, 'WiFi access information updated successfully!')
+                return redirect('employee_profile_forms')
+                
+        elif form_type == 'parking':
+            form = ParkingDetailsForm(request.POST, instance=getattr(employee, 'parkingdetails', None))
+            if form.is_valid():
+                parking = form.save(commit=False)
+                parking.employee = employee
+                parking.save()
+                messages.success(request, 'Parking details updated successfully!')
+                return redirect('employee_profile_forms')
+                
+        elif form_type == 'insurance':
+            form = InsuranceDetailsForm(request.POST, instance=getattr(employee, 'insurancedetails', None))
+            if form.is_valid():
+                insurance = form.save(commit=False)
+                insurance.employee = employee
+                insurance.save()
+                messages.success(request, 'Insurance details updated successfully!')
+                return redirect('employee_profile_forms')
+    
+    context = {
+        'employee': employee,
+        'employee_info_form': employee_info_form,
+        'id_card_form': id_card_form,
+        'wifi_access_form': wifi_access_form,
+        'parking_form': parking_form,
+        'insurance_form': insurance_form,
+    }
+    return render(request, 'employee/profile_forms.html', context)
+
+@login_required
+@role_required(['HR', 'ADMIN'])
+def review_employee_forms(request, employee_id):
+    """View for HR/Admin to review employee forms"""
+    employee = get_object_or_404(Employee, eID=employee_id)
+    
+    # Get all forms data
+    employee_info = getattr(employee, 'employeeinformation', None)
+    id_card = getattr(employee, 'idcard', None)
+    wifi_access = getattr(employee, 'wifiaccess', None)
+    parking = getattr(employee, 'parkingdetails', None)
+    insurance = getattr(employee, 'insurancedetails', None)
+    
+    if request.method == 'POST':
+        form_type = request.POST.get('form_type')
+        action = request.POST.get('action')
+        
+        if action == 'approve':
+            # Create or update ProfileUpdateRequest
+            ProfileUpdateRequest.objects.create(
+                employee=employee,
+                requested_by=request.user,
+                proposed_changes={form_type: 'approved'},
+                status='APPROVED',
+                reviewed_by=request.user,
+                reviewed_at=timezone.now()
+            )
+            messages.success(request, f'{form_type.replace("_", " ").title()} approved successfully!')
+        elif action == 'reject':
+            ProfileUpdateRequest.objects.create(
+                employee=employee,
+                requested_by=request.user,
+                proposed_changes={form_type: 'rejected'},
+                status='REJECTED',
+                reviewed_by=request.user,
+                reviewed_at=timezone.now(),
+                review_comments=request.POST.get('comments', '')
+            )
+            messages.warning(request, f'{form_type.replace("_", " ").title()} rejected.')
+        
+        return redirect('review_employee_forms', employee_id=employee_id)
+    
+    context = {
+        'employee': employee,
+        'employee_info': employee_info,
+        'id_card': id_card,
+        'wifi_access': wifi_access,
+        'parking': parking,
+        'insurance': insurance,
+    }
+    return render(request, 'employee/review_forms.html', context)
+
+@login_required
+@role_required(['HR', 'ADMIN'])
+def employee_validation_list(request):
+    """View for HR/Admin to list and validate employee information"""
+    # Get all employees with their validation status
+    employees = Employee.objects.all().order_by('-joinDate')
+    
+    # Add validation status to each employee
+    for employee in employees:
+        # Check if employee has any pending updates
+        pending_updates = ProfileUpdateRequest.objects.filter(
+            employee=employee,
+            status='PENDING'
+        ).exists()
+        
+        # Check if all required information is provided
+        has_employee_info = hasattr(employee, 'employeeinformation')
+        has_id_card = hasattr(employee, 'idcard')
+        has_wifi_access = hasattr(employee, 'wifiaccess')
+        has_parking = hasattr(employee, 'parkingdetails')
+        has_insurance = hasattr(employee, 'insurancedetails')
+        
+        # Determine overall validation status
+        if pending_updates:
+            employee.validation_status = 'PENDING'
+        elif all([has_employee_info, has_id_card, has_wifi_access, has_parking, has_insurance]):
+            employee.validation_status = 'APPROVED'
+        else:
+            employee.validation_status = 'INCOMPLETE'
+            
+        # Get last update time
+        last_update = ProfileUpdateRequest.objects.filter(
+            employee=employee
+        ).order_by('-reviewed_at').first()
+        
+        employee.last_updated = last_update.reviewed_at if last_update else employee.joinDate
+    
+    context = {
+        'employees': employees,
+        'page_title': 'Employee Information Validation',
+        'active_page': 'validation'
+    }
+    return render(request, 'employee/employee_validation.html', context)
+
+@login_required(login_url='/')
+@role_required(['ADMIN', 'HR'])
+def employee_documents(request, employee_id):
+    """View for displaying and verifying employee documents"""
+    employee = get_object_or_404(Employee, eID=employee_id)
+    documents = Document.objects.filter(employee=employee).order_by('-uploaded_at')
+    
+    if request.method == 'POST':
+        doc_id = request.POST.get('doc_id')
+        status = request.POST.get('status')
+        comments = request.POST.get('comments', '')
+        
+        document = get_object_or_404(Document, id=doc_id)
+        document.status = status
+        document.verified_by = request.user
+        document.verified_at = timezone.now()
+        document.comments = comments
+        document.save()
+        
+        AuditLog.objects.create(
+            user=request.user,
+            action=f"Document Verification - {status}",
+            details=f"Document {doc_id} verified for {employee.eID}"
+        )
+        
+        messages.success(request, "Document verification updated successfully!")
+        return redirect('employee_documents', employee_id=employee_id)
+    
+    context = {
+        'employee': employee,
+        'documents': documents,
+        'page_title': f'Documents - {employee.firstName} {employee.lastName}',
+        'active_page': 'documents'
+    }
+    return render(request, 'employee/employee_documents.html', context)

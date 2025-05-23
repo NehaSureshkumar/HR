@@ -1,5 +1,5 @@
 from django.contrib import admin
-from employee.models import Employee, Attendance, Notice, workAssignments, Document, UserProfile, AuditLog, JobOpening, ProfileUpdateRequest
+from employee.models import Employee, Attendance, Notice, workAssignments, Document, UserProfile, AuditLog, JobOpening, ProfileUpdateRequest, EmployeeInformation, IDCard, WiFiAccess, ParkingDetails, InsuranceDetails
 
 class EmployeeAdmin(admin.ModelAdmin):
     list_display = ('eID', 'firstName', 'lastName', 'designation', 'email', 'joinDate')
@@ -22,6 +22,35 @@ class AuditLogAdmin(admin.ModelAdmin):
     list_filter = ('action', 'timestamp')
     search_fields = ('user__username', 'action', 'details')
     readonly_fields = ('user', 'action', 'timestamp', 'details')
+
+@admin.register(EmployeeInformation)
+class EmployeeInformationAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'title', 'status', 'employment_type', 'joining_date')
+    search_fields = ('employee__eID', 'employee__firstName', 'employee__lastName')
+    list_filter = ('status', 'employment_type')
+
+@admin.register(IDCard)
+class IDCardAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'title', 'mobile_number', 'blood_group')
+    search_fields = ('employee__eID', 'employee__firstName', 'employee__lastName', 'mobile_number')
+    list_filter = ('blood_group',)
+
+@admin.register(WiFiAccess)
+class WiFiAccessAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'mobile_number', 'access_card_number')
+    search_fields = ('employee__eID', 'employee__firstName', 'employee__lastName', 'access_card_number')
+
+@admin.register(ParkingDetails)
+class ParkingDetailsAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'parking_status', 'vehicle_number_plate', 'vehicle_make')
+    search_fields = ('employee__eID', 'employee__firstName', 'employee__lastName', 'vehicle_number_plate')
+    list_filter = ('parking_status', 'vehicle_make')
+
+@admin.register(InsuranceDetails)
+class InsuranceDetailsAdmin(admin.ModelAdmin):
+    list_display = ('employee', 'insured_name', 'relationship', 'sum_insured')
+    search_fields = ('employee__eID', 'employee__firstName', 'employee__lastName', 'insured_name')
+    list_filter = ('relationship', 'endorsement_type', 'critical_illness_maternity')
 
 admin.site.register(Employee, EmployeeAdmin)
 admin.site.register(Attendance)

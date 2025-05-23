@@ -1,0 +1,226 @@
+{% extends 'employee/base.html' %}
+{% block title %}Review Employee Forms - {{ employee.firstName }} {{ employee.lastName }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-8 px-4">
+    <div class="mb-8">
+        <h2 class="text-3xl font-bold text-blue-800">Review Employee Forms</h2>
+        <p class="text-gray-600 mt-2">Employee: {{ employee.firstName }} {{ employee.lastName }} ({{ employee.eID }})</p>
+    </div>
+
+    {% if messages %}
+    <div class="messages mb-6">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} p-4 mb-4 rounded">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Employee Information Review -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <h3 class="text-xl font-semibold mb-4">Employee Information</h3>
+        {% if employee_info %}
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p><strong>Title:</strong> {{ employee_info.title }}</p>
+                    <p><strong>Status:</strong> {{ employee_info.status }}</p>
+                    <p><strong>Employment Type:</strong> {{ employee_info.employment_type }}</p>
+                    <p><strong>Joining Date:</strong> {{ employee_info.joining_date }}</p>
+                </div>
+                <div>
+                    <p><strong>Employment Type at Hiring:</strong> {{ employee_info.employment_type_at_hiring }}</p>
+                    <p><strong>Full Time Conversion Date:</strong> {{ employee_info.full_time_conversion_date }}</p>
+                    <p><strong>Exit Date:</strong> {{ employee_info.exit_date }}</p>
+                </div>
+            </div>
+            <form method="POST" class="mt-4">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="employee_info">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="comments">
+                        Comments
+                    </label>
+                    <textarea name="comments" id="comments" rows="3" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"></textarea>
+                </div>
+                <div class="flex space-x-4">
+                    <button type="submit" name="action" value="approve" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                        Approve
+                    </button>
+                    <button type="submit" name="action" value="reject" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+                        Reject
+                    </button>
+                </div>
+            </form>
+        {% else %}
+            <p class="text-gray-500">No employee information submitted yet.</p>
+        {% endif %}
+    </div>
+
+    <!-- ID Card Review -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <h3 class="text-xl font-semibold mb-4">ID Card Information</h3>
+        {% if id_card %}
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p><strong>Title:</strong> {{ id_card.title }}</p>
+                    <p><strong>Mobile Number:</strong> {{ id_card.mobile_number }}</p>
+                    <p><strong>Blood Group:</strong> {{ id_card.blood_group }}</p>
+                </div>
+                <div>
+                    <p><strong>Emergency Contact:</strong> {{ id_card.emergency_contact_name }}</p>
+                    <p><strong>Emergency Number:</strong> {{ id_card.emergency_contact_number }}</p>
+                    <p><strong>Address:</strong> {{ id_card.address }}</p>
+                </div>
+            </div>
+            <form method="POST" class="mt-4">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="id_card">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="comments">
+                        Comments
+                    </label>
+                    <textarea name="comments" id="comments" rows="3" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"></textarea>
+                </div>
+                <div class="flex space-x-4">
+                    <button type="submit" name="action" value="approve" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                        Approve
+                    </button>
+                    <button type="submit" name="action" value="reject" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+                        Reject
+                    </button>
+                </div>
+            </form>
+        {% else %}
+            <p class="text-gray-500">No ID card information submitted yet.</p>
+        {% endif %}
+    </div>
+
+    <!-- WiFi Access Review -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <h3 class="text-xl font-semibold mb-4">WiFi Access Information</h3>
+        {% if wifi_access %}
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p><strong>Mobile Number:</strong> {{ wifi_access.mobile_number }}</p>
+                    <p><strong>Access Card Number:</strong> {{ wifi_access.access_card_number }}</p>
+                </div>
+            </div>
+            <form method="POST" class="mt-4">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="wifi_access">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="comments">
+                        Comments
+                    </label>
+                    <textarea name="comments" id="comments" rows="3" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"></textarea>
+                </div>
+                <div class="flex space-x-4">
+                    <button type="submit" name="action" value="approve" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                        Approve
+                    </button>
+                    <button type="submit" name="action" value="reject" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+                        Reject
+                    </button>
+                </div>
+            </form>
+        {% else %}
+            <p class="text-gray-500">No WiFi access information submitted yet.</p>
+        {% endif %}
+    </div>
+
+    <!-- Parking Details Review -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <h3 class="text-xl font-semibold mb-4">Parking Details</h3>
+        {% if parking %}
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p><strong>Parking Status:</strong> {{ parking.parking_status }}</p>
+                    <p><strong>Vehicle Number Plate:</strong> {{ parking.vehicle_number_plate }}</p>
+                    <p><strong>Vehicle Make:</strong> {{ parking.vehicle_make }}</p>
+                </div>
+                <div>
+                    <p><strong>Vehicle Year:</strong> {{ parking.vehicle_year }}</p>
+                    <p><strong>Vehicle Color:</strong> {{ parking.vehicle_color }}</p>
+                </div>
+            </div>
+            <form method="POST" class="mt-4">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="parking">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="comments">
+                        Comments
+                    </label>
+                    <textarea name="comments" id="comments" rows="3" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"></textarea>
+                </div>
+                <div class="flex space-x-4">
+                    <button type="submit" name="action" value="approve" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                        Approve
+                    </button>
+                    <button type="submit" name="action" value="reject" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+                        Reject
+                    </button>
+                </div>
+            </form>
+        {% else %}
+            <p class="text-gray-500">No parking details submitted yet.</p>
+        {% endif %}
+    </div>
+
+    <!-- Insurance Details Review -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <h3 class="text-xl font-semibold mb-4">Insurance Details</h3>
+        {% if insurance %}
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <p><strong>Mobile Number:</strong> {{ insurance.mobile_number }}</p>
+                    <p><strong>Insured Name:</strong> {{ insurance.insured_name }}</p>
+                    <p><strong>Relationship:</strong> {{ insurance.relationship }}</p>
+                    <p><strong>Gender:</strong> {{ insurance.gender }}</p>
+                    <p><strong>Date of Birth:</strong> {{ insurance.date_of_birth }}</p>
+                </div>
+                <div>
+                    <p><strong>Date of Joining:</strong> {{ insurance.date_of_joining }}</p>
+                    <p><strong>Date of Leaving:</strong> {{ insurance.date_of_leaving }}</p>
+                    <p><strong>Sum Insured:</strong> {{ insurance.sum_insured }}</p>
+                    <p><strong>Endorsement Type:</strong> {{ insurance.endorsement_type }}</p>
+                    <p><strong>Critical Illness/Maternity:</strong> {{ insurance.critical_illness_maternity|yesno:"Yes,No" }}</p>
+                </div>
+            </div>
+            <div class="mt-4">
+                <p><strong>Reason for Leaving:</strong></p>
+                <p class="text-gray-700">{{ insurance.reason_for_leaving }}</p>
+                <p class="mt-2"><strong>Remarks:</strong></p>
+                <p class="text-gray-700">{{ insurance.remarks }}</p>
+            </div>
+            <form method="POST" class="mt-4">
+                {% csrf_token %}
+                <input type="hidden" name="form_type" value="insurance">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="comments">
+                        Comments
+                    </label>
+                    <textarea name="comments" id="comments" rows="3" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"></textarea>
+                </div>
+                <div class="flex space-x-4">
+                    <button type="submit" name="action" value="approve" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                        Approve
+                    </button>
+                    <button type="submit" name="action" value="reject" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
+                        Reject
+                    </button>
+                </div>
+            </form>
+        {% else %}
+            <p class="text-gray-500">No insurance details submitted yet.</p>
+        {% endif %}
+    </div>
+
+    <div class="mt-6">
+        <a href="{% url 'employee_validation_list' %}" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+            Back to Employee List
+        </a>
+    </div>
+</div>
+{% endblock %} 

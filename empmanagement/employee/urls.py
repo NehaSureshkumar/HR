@@ -57,6 +57,7 @@ urlpatterns = [
     # Document Verification URLs
     path('documents/verification/', views.document_verification, name='document_verification'),
     path('documents/verify/<int:doc_id>/', views.verify_document, name='verify_document'),
+    path('documents/employee/<str:employee_id>/', views.employee_documents, name='employee_documents'),
     
     # Job Openings Management
     path('hr/jobs/', views.manage_job_openings, name='manage_job_openings'),
@@ -102,4 +103,7 @@ urlpatterns = [
     path('training/', views.training_program_list, name='training_program_list'),
     path('', include(router.urls)),
     path('api/docs/', login_required(schema_view.with_ui('swagger', cache_timeout=0)), name='api-docs'),
+    path('profile/forms/', views.employee_profile_forms, name='employee_profile_forms'),
+    path('profile/review/<str:employee_id>/', views.review_employee_forms, name='review_employee_forms'),
+    path('hr/validation/', views.employee_validation_list, name='employee_validation_list'),
 ]

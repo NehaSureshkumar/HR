@@ -1,6 +1,6 @@
 from tkinter import Widget
 from django import forms
-from .models import workAssignments, Requests, Document, Employee, UserProfile
+from .models import workAssignments, Requests, Document, Employee, UserProfile, EmployeeInformation, IDCard, WiFiAccess, ParkingDetails, InsuranceDetails
 
 class workform(forms.ModelForm):
     class Meta:
@@ -61,4 +61,77 @@ class UserProfileUpdateForm(forms.ModelForm):
             'emergency_contact_phone': forms.TextInput(attrs={'class': 'form-control'}),
             'bank_account_number': forms.TextInput(attrs={'class': 'form-control'}),
             'bank_ifsc': forms.TextInput(attrs={'class': 'form-control'})
+        }
+
+class EmployeeInformationForm(forms.ModelForm):
+    class Meta:
+        model = EmployeeInformation
+        fields = ['title', 'status', 'employment_type', 'joining_date', 
+                 'employment_type_at_hiring', 'full_time_conversion_date', 'exit_date']
+        widgets = {
+            'joining_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'full_time_conversion_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'exit_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'title': forms.Select(attrs={'class': 'form-control'}),
+            'status': forms.Select(attrs={'class': 'form-control'}),
+            'employment_type': forms.Select(attrs={'class': 'form-control'}),
+            'employment_type_at_hiring': forms.Select(attrs={'class': 'form-control'}),
+        }
+
+class IDCardForm(forms.ModelForm):
+    class Meta:
+        model = IDCard
+        fields = ['title', 'mobile_number', 'blood_group', 'emergency_contact_name', 
+                 'emergency_contact_number', 'address']
+        widgets = {
+            'title': forms.Select(attrs={'class': 'form-control'}),
+            'mobile_number': forms.TextInput(attrs={'class': 'form-control', 'pattern': '[0-9]{10}'}),
+            'blood_group': forms.Select(attrs={'class': 'form-control'}),
+            'emergency_contact_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'emergency_contact_number': forms.TextInput(attrs={'class': 'form-control', 'pattern': '[0-9]{10}'}),
+            'address': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+class WiFiAccessForm(forms.ModelForm):
+    class Meta:
+        model = WiFiAccess
+        fields = ['mobile_number', 'access_card_number']
+        widgets = {
+            'mobile_number': forms.TextInput(attrs={'class': 'form-control', 'pattern': '[0-9]{10}'}),
+            'access_card_number': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+class ParkingDetailsForm(forms.ModelForm):
+    class Meta:
+        model = ParkingDetails
+        fields = ['parking_status', 'vehicle_number_plate', 'vehicle_make', 
+                 'vehicle_year', 'vehicle_color']
+        widgets = {
+            'parking_status': forms.Select(attrs={'class': 'form-control'}),
+            'vehicle_number_plate': forms.TextInput(attrs={'class': 'form-control'}),
+            'vehicle_make': forms.Select(attrs={'class': 'form-control'}),
+            'vehicle_year': forms.NumberInput(attrs={'class': 'form-control', 'min': 1900, 'max': 2100}),
+            'vehicle_color': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+class InsuranceDetailsForm(forms.ModelForm):
+    class Meta:
+        model = InsuranceDetails
+        fields = ['mobile_number', 'insured_name', 'relationship', 'gender', 
+                 'date_of_birth', 'date_of_joining', 'date_of_leaving', 
+                 'reason_for_leaving', 'sum_insured', 'endorsement_type', 
+                 'critical_illness_maternity', 'remarks']
+        widgets = {
+            'mobile_number': forms.TextInput(attrs={'class': 'form-control', 'pattern': '[0-9]{10}'}),
+            'insured_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'relationship': forms.Select(attrs={'class': 'form-control'}),
+            'gender': forms.Select(attrs={'class': 'form-control'}),
+            'date_of_birth': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'date_of_joining': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'date_of_leaving': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'reason_for_leaving': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'sum_insured': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
+            'endorsement_type': forms.Select(attrs={'class': 'form-control'}),
+            'critical_illness_maternity': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'remarks': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }

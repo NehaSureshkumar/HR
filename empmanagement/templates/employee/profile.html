@@ -1,8 +1,10 @@
 {% extends 'employee/base.html' %}
 {% block title %}Profile - Employee Management System{% endblock %}
 {% block content %}
-<div class="max-w-3xl mx-auto py-8 px-4">
+<div class="max-w-7xl mx-auto py-8 px-4">
     <h2 class="text-3xl font-bold mb-8 text-blue-800">My Profile</h2>
+
+    <!-- Personal Information Section -->
     <div class="bg-white rounded-lg shadow p-6 mb-8">
         <h3 class="font-semibold text-lg mb-4 text-blue-700">Personal Information</h3>
         <form method="post" class="space-y-6">
@@ -33,7 +35,17 @@
                     <input type="text" value="{{ employee.dOB|date:'Y-m-d' }}" class="w-full border rounded px-3 py-2 bg-gray-100" disabled>
                 </div>
             </div>
-            <h3 class="font-semibold text-lg mt-8 mb-4 text-blue-700">Emergency & Bank Details</h3>
+            <div class="mt-6">
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700 font-medium">Update Profile</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Emergency & Bank Details Section -->
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <h3 class="font-semibold text-lg mb-4 text-blue-700">Emergency & Bank Details</h3>
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-gray-700 font-medium mb-1">Emergency Contact Name</label>
@@ -53,10 +65,77 @@
                 </div>
             </div>
             <div class="mt-6">
-                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700 font-medium">Update Profile</button>
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700 font-medium">Update Details</button>
             </div>
         </form>
     </div>
+
+    <!-- Employee Information Form -->
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <h3 class="font-semibold text-lg mb-4 text-blue-700">Employment Information</h3>
+        <form method="post" action="{% url 'employee_profile_forms' %}" class="space-y-6">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="employee_info">
+            {{ employee_info_form.as_p }}
+            <div class="mt-6">
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700 font-medium">Update Employment Info</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- ID Card Form -->
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <h3 class="font-semibold text-lg mb-4 text-blue-700">ID Card Information</h3>
+        <form method="post" action="{% url 'employee_profile_forms' %}" class="space-y-6">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="id_card">
+            {{ id_card_form.as_p }}
+            <div class="mt-6">
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700 font-medium">Update ID Card Info</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- WiFi Access Form -->
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <h3 class="font-semibold text-lg mb-4 text-blue-700">WiFi Access Information</h3>
+        <form method="post" action="{% url 'employee_profile_forms' %}" class="space-y-6">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="wifi_access">
+            {{ wifi_access_form.as_p }}
+            <div class="mt-6">
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700 font-medium">Update WiFi Access</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Parking Details Form -->
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <h3 class="font-semibold text-lg mb-4 text-blue-700">Parking Details</h3>
+        <form method="post" action="{% url 'employee_profile_forms' %}" class="space-y-6">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="parking">
+            {{ parking_form.as_p }}
+            <div class="mt-6">
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700 font-medium">Update Parking Details</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Insurance Details Form -->
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <h3 class="font-semibold text-lg mb-4 text-blue-700">Insurance Details</h3>
+        <form method="post" action="{% url 'employee_profile_forms' %}" class="space-y-6">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="insurance">
+            {{ insurance_form.as_p }}
+            <div class="mt-6">
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700 font-medium">Update Insurance Details</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Documents Section -->
     <div class="bg-white rounded-lg shadow p-6">
         <h3 class="font-semibold text-lg mb-4 text-blue-700">Uploaded Documents</h3>
         {% if documents %}
@@ -73,4 +152,22 @@
         {% endif %}
     </div>
 </div>
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Initialize tooltips
+        $('[data-toggle="tooltip"]').tooltip();
+        
+        // Form validation
+        $('form').on('submit', function(e) {
+            if (!this.checkValidity()) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            $(this).addClass('was-validated');
+        });
+    });
+</script>
+{% endblock %}
 {% endblock %} 
