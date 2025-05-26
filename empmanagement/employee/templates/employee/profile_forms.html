@@ -32,8 +32,13 @@
                     <form method="post">
                         {% csrf_token %}
                         <input type="hidden" name="form_type" value="employee_info">
-                        {{ employee_info_form.as_p }}
-                        <button type="submit" class="btn btn-primary">Save Employee Information</button>
+                        <fieldset {% if not form_statuses.employee_info.is_editable %}disabled{% endif %}>
+                            {{ employee_info_form.as_p }}
+                            <button type="submit" class="btn btn-primary" {% if not form_statuses.employee_info.is_editable %}disabled{% endif %}>Save Employee Information</button>
+                        </fieldset>
+                        {% if not form_statuses.employee_info.is_editable %}
+                            <div class="text-muted mt-2">Editing is disabled. Please contact HR/Admin to enable re-edit.</div>
+                        {% endif %}
                     </form>
                 </div>
             </div>
@@ -53,8 +58,13 @@
                     <form method="post">
                         {% csrf_token %}
                         <input type="hidden" name="form_type" value="id_card">
-                        {{ id_card_form.as_p }}
-                        <button type="submit" class="btn btn-primary">Save ID Card Information</button>
+                        <fieldset {% if not form_statuses.id_card.is_editable %}disabled{% endif %}>
+                            {{ id_card_form.as_p }}
+                            <button type="submit" class="btn btn-primary" {% if not form_statuses.id_card.is_editable %}disabled{% endif %}>Save ID Card Information</button>
+                        </fieldset>
+                        {% if not form_statuses.id_card.is_editable %}
+                            <div class="text-muted mt-2">Editing is disabled. Please contact HR/Admin to enable re-edit.</div>
+                        {% endif %}
                     </form>
                 </div>
             </div>
@@ -74,8 +84,13 @@
                     <form method="post">
                         {% csrf_token %}
                         <input type="hidden" name="form_type" value="wifi_access">
-                        {{ wifi_access_form.as_p }}
-                        <button type="submit" class="btn btn-primary">Save WiFi Access Information</button>
+                        <fieldset {% if not form_statuses.wifi_access.is_editable %}disabled{% endif %}>
+                            {{ wifi_access_form.as_p }}
+                            <button type="submit" class="btn btn-primary" {% if not form_statuses.wifi_access.is_editable %}disabled{% endif %}>Save WiFi Access Information</button>
+                        </fieldset>
+                        {% if not form_statuses.wifi_access.is_editable %}
+                            <div class="text-muted mt-2">Editing is disabled. Please contact HR/Admin to enable re-edit.</div>
+                        {% endif %}
                     </form>
                 </div>
             </div>
@@ -95,8 +110,13 @@
                     <form method="post">
                         {% csrf_token %}
                         <input type="hidden" name="form_type" value="parking">
-                        {{ parking_form.as_p }}
-                        <button type="submit" class="btn btn-primary">Save Parking Details</button>
+                        <fieldset {% if not form_statuses.parking.is_editable %}disabled{% endif %}>
+                            {{ parking_form.as_p }}
+                            <button type="submit" class="btn btn-primary" {% if not form_statuses.parking.is_editable %}disabled{% endif %}>Save Parking Details</button>
+                        </fieldset>
+                        {% if not form_statuses.parking.is_editable %}
+                            <div class="text-muted mt-2">Editing is disabled. Please contact HR/Admin to enable re-edit.</div>
+                        {% endif %}
                     </form>
                 </div>
             </div>
@@ -116,8 +136,13 @@
                     <form method="post">
                         {% csrf_token %}
                         <input type="hidden" name="form_type" value="insurance">
-                        {{ insurance_form.as_p }}
-                        <button type="submit" class="btn btn-primary">Save Insurance Details</button>
+                        <fieldset {% if not form_statuses.insurance.is_editable %}disabled{% endif %}>
+                            {{ insurance_form.as_p }}
+                            <button type="submit" class="btn btn-primary" {% if not form_statuses.insurance.is_editable %}disabled{% endif %}>Save Insurance Details</button>
+                        </fieldset>
+                        {% if not form_statuses.insurance.is_editable %}
+                            <div class="text-muted mt-2">Editing is disabled. Please contact HR/Admin to enable re-edit.</div>
+                        {% endif %}
                     </form>
                 </div>
             </div>

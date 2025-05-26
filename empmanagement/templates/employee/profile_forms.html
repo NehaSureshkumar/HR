@@ -1,0 +1,448 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Employee Profile Forms{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Employee Profile Forms</h2>
+        <div class="progress" style="width: 200px;">
+            <div class="progress-bar" role="progressbar" style="width: {{ profile_completion }}%;" 
+                 aria-valuenow="{{ profile_completion }}" aria-valuemin="0" aria-valuemax="100">
+                {{ profile_completion }}% Complete
+            </div>
+        </div>
+    </div>
+    
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="accordion" id="formsAccordion">
+        <!-- Employee Information -->
+        <div class="card">
+            <div class="card-header" id="employeeInfoHeading">
+                <h2 class="mb-0">
+                    <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#employeeInfoCollapse">
+                        Employee Information
+                        {% if form_statuses.employee_info.status == 'PENDING' %}
+                            <span class="badge badge-warning">Under Review</span>
+                        {% elif form_statuses.employee_info.status == 'APPROVED' %}
+                            <span class="badge badge-success">Approved</span>
+                        {% elif form_statuses.employee_info.status == 'REJECTED' %}
+                            <span class="badge badge-danger">Rejected</span>
+                        {% else %}
+                            <span class="badge badge-secondary">Not Submitted</span>
+                        {% endif %}
+                    </button>
+                </h2>
+            </div>
+            <div id="employeeInfoCollapse" class="collapse show" data-parent="#formsAccordion">
+                <div class="card-body">
+                    <form method="post" id="employeeInfoForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="employee_info">
+                        
+                        {% if form_statuses.employee_info.status == 'PENDING' %}
+                            <div class="alert alert-warning">
+                                This form is currently under review. You cannot make changes until it is approved or rejected.
+                            </div>
+                        {% elif form_statuses.employee_info.status == 'REJECTED' %}
+                            <div class="alert alert-danger">
+                                <strong>Rejection Comments:</strong> {{ form_statuses.employee_info.review_comments }}
+                            </div>
+                        {% elif form_statuses.employee_info.status == 'APPROVED' %}
+                            <div class="alert alert-success">
+                                <strong>Approved on:</strong> {{ form_statuses.employee_info.reviewed_at|date:"F j, Y" }}
+                            </div>
+                        {% endif %}
+                        
+                        <div class="form-group">
+                            <label for="name">Name</label>
+                            <input type="text" class="form-control" id="name" name="name" 
+                                   value="{{ employee_info.name|default:'' }}"
+                                   {% if not form_statuses.employee_info.is_editable %}disabled{% endif %}>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="email">Email</label>
+                            <input type="email" class="form-control" id="email" name="email" 
+                                   value="{{ employee_info.email|default:'' }}"
+                                   {% if not form_statuses.employee_info.is_editable %}disabled{% endif %}>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="phone">Phone</label>
+                            <input type="tel" class="form-control" id="phone" name="phone" 
+                                   value="{{ employee_info.phone|default:'' }}"
+                                   {% if not form_statuses.employee_info.is_editable %}disabled{% endif %}>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="department">Department</label>
+                            <input type="text" class="form-control" id="department" name="department" 
+                                   value="{{ employee_info.department|default:'' }}"
+                                   {% if not form_statuses.employee_info.is_editable %}disabled{% endif %}>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="position">Position</label>
+                            <input type="text" class="form-control" id="position" name="position" 
+                                   value="{{ employee_info.position|default:'' }}"
+                                   {% if not form_statuses.employee_info.is_editable %}disabled{% endif %}>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="joining_date">Joining Date</label>
+                            <input type="date" class="form-control" id="joining_date" name="joining_date" 
+                                   value="{{ employee_info.joining_date|date:'Y-m-d'|default:'' }}"
+                                   {% if not form_statuses.employee_info.is_editable %}disabled{% endif %}>
+                        </div>
+                        
+                        {% if form_statuses.employee_info.is_editable %}
+                            <button type="submit" class="btn btn-primary">
+                                {% if form_statuses.employee_info.status == 'REJECTED' %}
+                                    Resubmit
+                                {% else %}
+                                    Submit
+                                {% endif %}
+                            </button>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- ID Card -->
+        <div class="card">
+            <div class="card-header" id="idCardHeading">
+                <h2 class="mb-0">
+                    <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#idCardCollapse">
+                        ID Card
+                        {% if form_statuses.id_card.status == 'PENDING' %}
+                            <span class="badge badge-warning">Under Review</span>
+                        {% elif form_statuses.id_card.status == 'APPROVED' %}
+                            <span class="badge badge-success">Approved</span>
+                        {% elif form_statuses.id_card.status == 'REJECTED' %}
+                            <span class="badge badge-danger">Rejected</span>
+                        {% else %}
+                            <span class="badge badge-secondary">Not Submitted</span>
+                        {% endif %}
+                    </button>
+                </h2>
+            </div>
+            <div id="idCardCollapse" class="collapse" data-parent="#formsAccordion">
+                <div class="card-body">
+                    <form method="post" id="idCardForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="id_card">
+                        
+                        {% if form_statuses.id_card.status == 'PENDING' %}
+                            <div class="alert alert-warning">
+                                This form is currently under review. You cannot make changes until it is approved or rejected.
+                            </div>
+                        {% elif form_statuses.id_card.status == 'REJECTED' %}
+                            <div class="alert alert-danger">
+                                <strong>Rejection Comments:</strong> {{ form_statuses.id_card.review_comments }}
+                            </div>
+                        {% elif form_statuses.id_card.status == 'APPROVED' %}
+                            <div class="alert alert-success">
+                                <strong>Approved on:</strong> {{ form_statuses.id_card.reviewed_at|date:"F j, Y" }}
+                            </div>
+                        {% endif %}
+                        
+                        <div class="form-group">
+                            <label for="card_number">Card Number</label>
+                            <input type="text" class="form-control" id="card_number" name="card_number" 
+                                   value="{{ id_card.card_number|default:'' }}"
+                                   {% if not form_statuses.id_card.is_editable %}disabled{% endif %}>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="issue_date">Issue Date</label>
+                            <input type="date" class="form-control" id="issue_date" name="issue_date" 
+                                   value="{{ id_card.issue_date|date:'Y-m-d'|default:'' }}"
+                                   {% if not form_statuses.id_card.is_editable %}disabled{% endif %}>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="expiry_date">Expiry Date</label>
+                            <input type="date" class="form-control" id="expiry_date" name="expiry_date" 
+                                   value="{{ id_card.expiry_date|date:'Y-m-d'|default:'' }}"
+                                   {% if not form_statuses.id_card.is_editable %}disabled{% endif %}>
+                        </div>
+                        
+                        {% if form_statuses.id_card.is_editable %}
+                            <button type="submit" class="btn btn-primary">
+                                {% if form_statuses.id_card.status == 'REJECTED' %}
+                                    Resubmit
+                                {% else %}
+                                    Submit
+                                {% endif %}
+                            </button>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- WiFi Access -->
+        <div class="card">
+            <div class="card-header" id="wifiAccessHeading">
+                <h2 class="mb-0">
+                    <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#wifiAccessCollapse">
+                        WiFi Access
+                        {% if form_statuses.wifi_access.status == 'PENDING' %}
+                            <span class="badge badge-warning">Under Review</span>
+                        {% elif form_statuses.wifi_access.status == 'APPROVED' %}
+                            <span class="badge badge-success">Approved</span>
+                        {% elif form_statuses.wifi_access.status == 'REJECTED' %}
+                            <span class="badge badge-danger">Rejected</span>
+                        {% else %}
+                            <span class="badge badge-secondary">Not Submitted</span>
+                        {% endif %}
+                    </button>
+                </h2>
+            </div>
+            <div id="wifiAccessCollapse" class="collapse" data-parent="#formsAccordion">
+                <div class="card-body">
+                    <form method="post" id="wifiAccessForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="wifi_access">
+                        
+                        {% if form_statuses.wifi_access.status == 'PENDING' %}
+                            <div class="alert alert-warning">
+                                This form is currently under review. You cannot make changes until it is approved or rejected.
+                            </div>
+                        {% elif form_statuses.wifi_access.status == 'REJECTED' %}
+                            <div class="alert alert-danger">
+                                <strong>Rejection Comments:</strong> {{ form_statuses.wifi_access.review_comments }}
+                            </div>
+                        {% elif form_statuses.wifi_access.status == 'APPROVED' %}
+                            <div class="alert alert-success">
+                                <strong>Approved on:</strong> {{ form_statuses.wifi_access.reviewed_at|date:"F j, Y" }}
+                            </div>
+                        {% endif %}
+                        
+                        <div class="form-group">
+                            <label for="username">Username</label>
+                            <input type="text" class="form-control" id="username" name="username" 
+                                   value="{{ wifi_access.username|default:'' }}"
+                                   {% if not form_statuses.wifi_access.is_editable %}disabled{% endif %}>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="device_type">Device Type</label>
+                            <input type="text" class="form-control" id="device_type" name="device_type" 
+                                   value="{{ wifi_access.device_type|default:'' }}"
+                                   {% if not form_statuses.wifi_access.is_editable %}disabled{% endif %}>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="mac_address">MAC Address</label>
+                            <input type="text" class="form-control" id="mac_address" name="mac_address" 
+                                   value="{{ wifi_access.mac_address|default:'' }}"
+                                   {% if not form_statuses.wifi_access.is_editable %}disabled{% endif %}>
+                        </div>
+                        
+                        {% if form_statuses.wifi_access.is_editable %}
+                            <button type="submit" class="btn btn-primary">
+                                {% if form_statuses.wifi_access.status == 'REJECTED' %}
+                                    Resubmit
+                                {% else %}
+                                    Submit
+                                {% endif %}
+                            </button>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Parking -->
+        <div class="card">
+            <div class="card-header" id="parkingHeading">
+                <h2 class="mb-0">
+                    <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#parkingCollapse">
+                        Parking
+                        {% if form_statuses.parking.status == 'PENDING' %}
+                            <span class="badge badge-warning">Under Review</span>
+                        {% elif form_statuses.parking.status == 'APPROVED' %}
+                            <span class="badge badge-success">Approved</span>
+                        {% elif form_statuses.parking.status == 'REJECTED' %}
+                            <span class="badge badge-danger">Rejected</span>
+                        {% else %}
+                            <span class="badge badge-secondary">Not Submitted</span>
+                        {% endif %}
+                    </button>
+                </h2>
+            </div>
+            <div id="parkingCollapse" class="collapse" data-parent="#formsAccordion">
+                <div class="card-body">
+                    <form method="post" id="parkingForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="parking">
+                        
+                        {% if form_statuses.parking.status == 'PENDING' %}
+                            <div class="alert alert-warning">
+                                This form is currently under review. You cannot make changes until it is approved or rejected.
+                            </div>
+                        {% elif form_statuses.parking.status == 'REJECTED' %}
+                            <div class="alert alert-danger">
+                                <strong>Rejection Comments:</strong> {{ form_statuses.parking.review_comments }}
+                            </div>
+                        {% elif form_statuses.parking.status == 'APPROVED' %}
+                            <div class="alert alert-success">
+                                <strong>Approved on:</strong> {{ form_statuses.parking.reviewed_at|date:"F j, Y" }}
+                            </div>
+                        {% endif %}
+                        
+                        <div class="form-group">
+                            <label for="vehicle_type">Vehicle Type</label>
+                            <input type="text" class="form-control" id="vehicle_type" name="vehicle_type" 
+                                   value="{{ parking.vehicle_type|default:'' }}"
+                                   {% if not form_statuses.parking.is_editable %}disabled{% endif %}>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="vehicle_number">Vehicle Number</label>
+                            <input type="text" class="form-control" id="vehicle_number" name="vehicle_number" 
+                                   value="{{ parking.vehicle_number|default:'' }}"
+                                   {% if not form_statuses.parking.is_editable %}disabled{% endif %}>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="parking_slot">Parking Slot</label>
+                            <input type="text" class="form-control" id="parking_slot" name="parking_slot" 
+                                   value="{{ parking.parking_slot|default:'' }}"
+                                   {% if not form_statuses.parking.is_editable %}disabled{% endif %}>
+                        </div>
+                        
+                        {% if form_statuses.parking.is_editable %}
+                            <button type="submit" class="btn btn-primary">
+                                {% if form_statuses.parking.status == 'REJECTED' %}
+                                    Resubmit
+                                {% else %}
+                                    Submit
+                                {% endif %}
+                            </button>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Insurance -->
+        <div class="card">
+            <div class="card-header" id="insuranceHeading">
+                <h2 class="mb-0">
+                    <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#insuranceCollapse">
+                        Insurance
+                        {% if form_statuses.insurance.status == 'PENDING' %}
+                            <span class="badge badge-warning">Under Review</span>
+                        {% elif form_statuses.insurance.status == 'APPROVED' %}
+                            <span class="badge badge-success">Approved</span>
+                        {% elif form_statuses.insurance.status == 'REJECTED' %}
+                            <span class="badge badge-danger">Rejected</span>
+                        {% else %}
+                            <span class="badge badge-secondary">Not Submitted</span>
+                        {% endif %}
+                    </button>
+                </h2>
+            </div>
+            <div id="insuranceCollapse" class="collapse" data-parent="#formsAccordion">
+                <div class="card-body">
+                    <form method="post" id="insuranceForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="form_type" value="insurance">
+                        
+                        {% if form_statuses.insurance.status == 'PENDING' %}
+                            <div class="alert alert-warning">
+                                This form is currently under review. You cannot make changes until it is approved or rejected.
+                            </div>
+                        {% elif form_statuses.insurance.status == 'REJECTED' %}
+                            <div class="alert alert-danger">
+                                <strong>Rejection Comments:</strong> {{ form_statuses.insurance.review_comments }}
+                            </div>
+                        {% elif form_statuses.insurance.status == 'APPROVED' %}
+                            <div class="alert alert-success">
+                                <strong>Approved on:</strong> {{ form_statuses.insurance.reviewed_at|date:"F j, Y" }}
+                            </div>
+                        {% endif %}
+                        
+                        <div class="form-group">
+                            <label for="policy_number">Policy Number</label>
+                            <input type="text" class="form-control" id="policy_number" name="policy_number" 
+                                   value="{{ insurance.policy_number|default:'' }}"
+                                   {% if not form_statuses.insurance.is_editable %}disabled{% endif %}>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="provider">Provider</label>
+                            <input type="text" class="form-control" id="provider" name="provider" 
+                                   value="{{ insurance.provider|default:'' }}"
+                                   {% if not form_statuses.insurance.is_editable %}disabled{% endif %}>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="coverage_amount">Coverage Amount</label>
+                            <input type="number" class="form-control" id="coverage_amount" name="coverage_amount" 
+                                   value="{{ insurance.coverage_amount|default:'' }}"
+                                   {% if not form_statuses.insurance.is_editable %}disabled{% endif %}>
+                        </div>
+                        
+                        {% if form_statuses.insurance.is_editable %}
+                            <button type="submit" class="btn btn-primary">
+                                {% if form_statuses.insurance.status == 'REJECTED' %}
+                                    Resubmit
+                                {% else %}
+                                    Submit
+                                {% endif %}
+                            </button>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    // Initialize tooltips
+    $(function () {
+        $('[data-toggle="tooltip"]').tooltip()
+    })
+    
+    // Form validation
+    $(document).ready(function() {
+        $('form').on('submit', function(e) {
+            var form = $(this);
+            var requiredFields = form.find('input[required]');
+            var isValid = true;
+            
+            requiredFields.each(function() {
+                if (!$(this).val()) {
+                    isValid = false;
+                    $(this).addClass('is-invalid');
+                } else {
+                    $(this).removeClass('is-invalid');
+                }
+            });
+            
+            if (!isValid) {
+                e.preventDefault();
+                alert('Please fill in all required fields.');
+            }
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %} 

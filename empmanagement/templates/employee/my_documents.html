@@ -38,6 +38,14 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm">
                         <a href="{{ doc.file.url }}" target="_blank" class="text-blue-600 hover:text-blue-900">View</a>
+                        {% if doc.allow_reupload and doc.status != 'PENDING' %}
+                        <form method="post" enctype="multipart/form-data" style="display:inline;" class="ml-2">
+                            {% csrf_token %}
+                            <input type="hidden" name="doc_id" value="{{ doc.id }}">
+                            <input type="file" name="document" required class="form-control-file d-inline-block" style="width:auto;display:inline;">
+                            <button type="submit" class="bg-yellow-500 text-white px-2 py-1 rounded text-xs hover:bg-yellow-600">Re-upload</button>
+                        </form>
+                        {% endif %}
                     </td>
                 </tr>
                 {% empty %}

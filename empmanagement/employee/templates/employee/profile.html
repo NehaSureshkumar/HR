@@ -1,0 +1,12 @@
+            <li class="py-3 flex justify-between items-center">
+                <span class="text-gray-800">{{ doc.document_type }}</span>
+                <a href="{{ doc.file.url }}" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm" target="_blank">View</a>
+                {% if doc.allow_reupload and doc.status != 'PENDING' %}
+                <form method="post" enctype="multipart/form-data" style="display:inline;" class="ml-2">
+                    {% csrf_token %}
+                    <input type="hidden" name="doc_id" value="{{ doc.id }}">
+                    <input type="file" name="document" required class="form-control-file d-inline-block" style="width:auto;display:inline;">
+                    <button type="submit" class="bg-yellow-500 text-white px-2 py-1 rounded text-xs hover:bg-yellow-600">Re-upload</button>
+                </form>
+                {% endif %}
+            </li> 

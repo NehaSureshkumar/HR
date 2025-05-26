@@ -270,8 +270,23 @@ def profile(request):
                 joinDate=timezone.now().date()
             )
         created = True
-    documents = Document.objects.filter(employee=employee)
-    
+
+    # Handle document re-upload
+    if request.method == 'POST' and 'doc_id' in request.POST and 'document' in request.FILES:
+        doc_id = request.POST.get('doc_id')
+        file = request.FILES.get('document')
+        document = get_object_or_404(Document, id=doc_id, employee=employee)
+        document.file = file
+        document.status = 'PENDING'
+        document.allow_reupload = False
+        document.comments = ''
+        document.save()
+        messages.success(request, 'Document re-uploaded successfully and sent for review!')
+        return redirect('profile')
+
+    # Get documents with latest status and allow_reupload flag
+    documents = Document.objects.filter(employee=employee).order_by('-uploaded_at')
+
     # Initialize forms for the new sections
     employee_info_form = EmployeeInformationForm(instance=getattr(employee, 'employeeinformation', None))
     id_card_form = IDCardForm(instance=getattr(employee, 'idcard', None))
@@ -320,6 +335,17 @@ def profile(request):
 @role_required(['EMPLOYEE'])
 def my_documents(request):
     employee = get_object_or_404(Employee, eID=request.user.username)
+    if request.method == 'POST' and 'doc_id' in request.POST and 'document' in request.FILES:
+        doc_id = request.POST.get('doc_id')
+        file = request.FILES.get('document')
+        document = get_object_or_404(Document, id=doc_id, employee=employee)
+        document.file = file
+        document.status = 'PENDING'
+        document.allow_reupload = False
+        document.comments = ''
+        document.save()
+        messages.success(request, 'Document re-uploaded successfully and sent for review!')
+        return redirect('my_documents')
     documents = employee.document_set.all().order_by('-uploaded_at')
 
     # Helper to get status for each info section
@@ -1473,6 +1499,22 @@ def employee_profile_forms(request):
                 messages.success(request, 'Insurance details updated successfully!')
                 return redirect('employee_profile_forms')
     
+    # Determine if each section is editable based on allow_edit
+    def get_is_editable(form_type):
+        req = ProfileUpdateRequest.objects.filter(
+            employee=employee,
+            proposed_changes__has_key=form_type
+        ).order_by('-submitted_at').first()
+        return getattr(req, 'allow_edit', False) if req else False
+
+    form_statuses = {
+        'employee_info': {'is_editable': get_is_editable('employee_info')},
+        'id_card': {'is_editable': get_is_editable('id_card')},
+        'wifi_access': {'is_editable': get_is_editable('wifi_access')},
+        'parking': {'is_editable': get_is_editable('parking')},
+        'insurance': {'is_editable': get_is_editable('insurance')},
+    }
+
     context = {
         'employee': employee,
         'employee_info_form': employee_info_form,
@@ -1480,6 +1522,7 @@ def employee_profile_forms(request):
         'wifi_access_form': wifi_access_form,
         'parking_form': parking_form,
         'insurance_form': insurance_form,
+        'form_statuses': form_statuses,
     }
     return render(request, 'employee/profile_forms.html', context)
 
@@ -1499,7 +1542,7 @@ def review_employee_forms(request, employee_id):
     if request.method == 'POST':
         form_type = request.POST.get('form_type')
         action = request.POST.get('action')
-        
+
         if action == 'approve':
             # Create or update ProfileUpdateRequest
             ProfileUpdateRequest.objects.create(
@@ -1508,7 +1551,8 @@ def review_employee_forms(request, employee_id):
                 proposed_changes={form_type: 'approved'},
                 status='APPROVED',
                 reviewed_by=request.user,
-                reviewed_at=timezone.now()
+                reviewed_at=timezone.now(),
+                allow_edit=False
             )
             messages.success(request, f'{form_type.replace("_", " ").title()} approved successfully!')
         elif action == 'reject':
@@ -1519,12 +1563,41 @@ def review_employee_forms(request, employee_id):
                 status='REJECTED',
                 reviewed_by=request.user,
                 reviewed_at=timezone.now(),
-                review_comments=request.POST.get('comments', '')
+                review_comments=request.POST.get('comments', ''),
+                allow_edit=False
             )
             messages.warning(request, f'{form_type.replace("_", " ").title()} rejected.')
-        
+        elif action == 'allow_edit':
+            # Set allow_edit=True for the latest ProfileUpdateRequest for this form_type
+            latest_req = ProfileUpdateRequest.objects.filter(
+                employee=employee,
+                proposed_changes__has_key=form_type
+            ).order_by('-submitted_at').first()
+            if latest_req:
+                latest_req.allow_edit = True
+                latest_req.save()
+                messages.success(request, f'Re-upload enabled for {form_type.replace("_", " ").title()}!')
+            else:
+                messages.error(request, f'No submission found to enable re-upload for {form_type.replace("_", " ").title()}.')
+            return redirect('review_employee_forms', employee_id=employee_id)
         return redirect('review_employee_forms', employee_id=employee_id)
-    
+
+    # Prepare form_statuses for button state
+    def get_allow_edit(form_type):
+        req = ProfileUpdateRequest.objects.filter(
+            employee=employee,
+            proposed_changes__has_key=form_type
+        ).order_by('-submitted_at').first()
+        return {'allow_edit': getattr(req, 'allow_edit', False) if req else False}
+
+    form_statuses = {
+        'employee_info': get_allow_edit('employee_info'),
+        'id_card': get_allow_edit('id_card'),
+        'wifi_access': get_allow_edit('wifi_access'),
+        'parking': get_allow_edit('parking'),
+        'insurance': get_allow_edit('insurance'),
+    }
+
     context = {
         'employee': employee,
         'employee_info': employee_info,
@@ -1532,6 +1605,7 @@ def review_employee_forms(request, employee_id):
         'wifi_access': wifi_access,
         'parking': parking,
         'insurance': insurance,
+        'form_statuses': form_statuses,
     }
     return render(request, 'employee/review_forms.html', context)
 
@@ -1590,22 +1664,29 @@ def employee_documents(request, employee_id):
         doc_id = request.POST.get('doc_id')
         status = request.POST.get('status')
         comments = request.POST.get('comments', '')
+        allow_reupload = request.POST.get('allow_reupload')
         
         document = get_object_or_404(Document, id=doc_id)
-        document.status = status
-        document.verified_by = request.user
-        document.verified_at = timezone.now()
-        document.comments = comments
-        document.save()
-        
-        AuditLog.objects.create(
-            user=request.user,
-            action=f"Document Verification - {status}",
-            details=f"Document {doc_id} verified for {employee.eID}"
-        )
-        
-        messages.success(request, "Document verification updated successfully!")
-        return redirect('employee_documents', employee_id=employee_id)
+        if allow_reupload == 'true':
+            document.allow_reupload = True
+            document.save()
+            messages.success(request, "Re-upload enabled for this document!")
+            return redirect('employee_documents', employee_id=employee_id)
+        else:
+            document.status = status
+            document.verified_by = request.user
+            document.verified_at = timezone.now()
+            document.comments = comments
+            document.save()
+            
+            AuditLog.objects.create(
+                user=request.user,
+                action=f"Document Verification - {status}",
+                details=f"Document {doc_id} verified for {employee.eID}"
+            )
+            
+            messages.success(request, "Document verification updated successfully!")
+            return redirect('employee_documents', employee_id=employee_id)
     
     context = {
         'employee': employee,

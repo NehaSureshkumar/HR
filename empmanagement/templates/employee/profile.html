@@ -143,7 +143,17 @@
             {% for doc in documents %}
             <li class="py-3 flex justify-between items-center">
                 <span class="text-gray-800">{{ doc.document_type }}</span>
-                <a href="{{ doc.file.url }}" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm" target="_blank">View</a>
+                <div class="flex items-center space-x-2">
+                    <a href="{{ doc.file.url }}" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-sm" target="_blank">View</a>
+                    {% if doc.allow_reupload and doc.status != 'PENDING' %}
+                    <form method="post" enctype="multipart/form-data" class="inline-flex items-center space-x-2">
+                        {% csrf_token %}
+                        <input type="hidden" name="doc_id" value="{{ doc.id }}">
+                        <input type="file" name="document" required class="text-sm border rounded px-2 py-1">
+                        <button type="submit" class="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 text-sm">Re-upload</button>
+                    </form>
+                    {% endif %}
+                </div>
             </li>
             {% endfor %}
         </ul>

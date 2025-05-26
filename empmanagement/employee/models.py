@@ -224,6 +224,7 @@ class Document(models.Model):
     verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     verified_at = models.DateTimeField(null=True, blank=True)
     comments = models.TextField(blank=True)
+    allow_reupload = models.BooleanField(default=False)
     
     def __str__(self):
         return f"{self.employee.eID} - {self.document_type}"
@@ -390,6 +391,7 @@ class ProfileUpdateRequest(models.Model):
     reviewed_at = models.DateTimeField(null=True, blank=True)
     reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='profile_update_reviews')
     review_comments = models.TextField(blank=True)
+    allow_edit = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.employee.eID} - {self.status}" 

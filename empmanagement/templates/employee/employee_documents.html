@@ -66,6 +66,14 @@
                                 Update
                             </button>
                         </form>
+                        <form method="POST" class="inline-block ml-2">
+                            {% csrf_token %}
+                            <input type="hidden" name="doc_id" value="{{ document.id }}">
+                            <input type="hidden" name="allow_reupload" value="true">
+                            <button type="submit" class="bg-yellow-500 text-white px-3 py-1 rounded text-sm hover:bg-yellow-600" {% if document.allow_reupload %}disabled{% endif %}>
+                                {% if document.allow_reupload %}Re-upload Enabled{% else %}Allow Re-upload{% endif %}
+                            </button>
+                        </form>
                     </td>
                 </tr>
                 {% empty %}
