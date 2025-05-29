@@ -1,27 +1,183 @@
 {% extends 'employee/base.html' %}
 
 {% block content %}
+<style>
+    .search-container {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+    }
+    .search-input {
+        border-radius: 20px;
+        padding: 10px 20px;
+        border: 1px solid #dee2e6;
+        width: 100%;
+        transition: all 0.3s ease;
+    }
+    .search-input:focus {
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+        border-color: #80bdff;
+    }
+    .training-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border: none;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .training-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+    }
+    .card-body {
+        padding: 1.5rem;
+    }
+    .badge {
+        padding: 8px 12px;
+        border-radius: 20px;
+        font-weight: 500;
+    }
+    .btn {
+        border-radius: 15px;
+        padding: 4px 12px;
+        transition: all 0.3s ease;
+        margin: 0 3px;
+        font-weight: 500;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.3px;
+        line-height: 1.5;
+    }
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .btn-info {
+        background-color: #17a2b8;
+        border-color: #17a2b8;
+        color: white;
+    }
+    .btn-info:hover {
+        background-color: #138496;
+        border-color: #138496;
+        color: white;
+    }
+    .btn-success {
+        background-color: #28a745;
+        border-color: #28a745;
+        color: white;
+    }
+    .btn-success:hover {
+        background-color: #218838;
+        border-color: #218838;
+        color: white;
+    }
+    .btn-warning {
+        background-color: #ffc107;
+        border-color: #ffc107;
+        color: #212529;
+    }
+    .btn-warning:hover {
+        background-color: #e0a800;
+        border-color: #d39e00;
+        color: #212529;
+    }
+    .btn-danger {
+        background-color: #dc3545;
+        border-color: #dc3545;
+        color: white;
+    }
+    .btn-danger:hover {
+        background-color: #c82333;
+        border-color: #bd2130;
+        color: white;
+    }
+    .btn-primary {
+        background-color: #007bff;
+        border-color: #007bff;
+        color: white;
+    }
+    .btn-primary:hover {
+        background-color: #0069d9;
+        border-color: #0062cc;
+        color: white;
+    }
+    .tag-badge {
+        background: #e9ecef;
+        color: #495057;
+        padding: 5px 10px;
+        border-radius: 15px;
+        margin: 2px;
+        display: inline-block;
+        font-size: 0.85rem;
+    }
+    .tag-badge:hover {
+        background: #dee2e6;
+        cursor: pointer;
+    }
+    .tag-badge.active {
+        background: #007bff;
+        color: white;
+    }
+    .action-buttons {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+    }
+    .action-buttons .btn {
+        flex: 0 1 auto;
+        min-width: 90px;
+        text-align: center;
+    }
+    .btn i {
+        margin-right: 3px;
+        font-size: 0.7rem;
+    }
+</style>
+
 <div class="container mt-4">
-    <h2>Training Programs</h2>
+    <div class="search-container">
+        <div class="row">
+            <div class="col-md-8">
+                <input type="text" id="searchInput" class="search-input" placeholder="Search training programs...">
+            </div>
+            <div class="col-md-4">
+                <div id="tagFilters" class="mt-2">
+                    <!-- Tags will be dynamically added here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">Training Programs</h2>
+        {% if user.userprofile.role in 'ADMIN,HR' %}
+        <a href="{% url 'create_training_program' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Create Training Program
+        </a>
+        {% endif %}
+    </div>
     
-    <div class="row">
+    <div class="row" id="programsContainer">
         {% for program in programs %}
-        <div class="col-md-6 mb-4">
-            <div class="card">
+        <div class="col-md-6 mb-4 program-card" data-tags="{{ program.tags.all|join:',' }}">
+            <div class="card training-card">
                 <div class="card-body">
                     <h5 class="card-title">{{ program.title }}</h5>
-                    <h6 class="card-subtitle mb-2 text-muted">{{ program.department }}</h6>
+                    <h6 class="card-subtitle mb-3 text-muted">{{ program.department }}</h6>
                     
                     <p class="card-text">{{ program.description|truncatewords:30 }}</p>
                     
                     <div class="mb-3">
                         <strong>Requirements:</strong>
-                        <p>{{ program.requirements|truncatewords:20 }}</p>
+                        <p class="mb-2">{{ program.requirements|truncatewords:20 }}</p>
                     </div>
                     
                     <div class="mb-3">
                         <strong>Duration:</strong>
-                        <p>{{ program.start_date }} to {{ program.end_date }}</p>
+                        <p class="mb-2">{{ program.start_date }} to {{ program.end_date }}</p>
                     </div>
                     
                     <div class="mb-3">
@@ -33,15 +189,42 @@
                     
                     <div class="mb-3">
                         <strong>Capacity:</strong>
-                        <p>{{ program.enrolled_count }}/{{ program.capacity }} enrolled</p>
+                        <p class="mb-2">{{ program.enrolled_count }}/{{ program.capacity }} enrolled</p>
                     </div>
+
+                    {% if program.tags.all %}
+                    <div class="mb-3">
+                        <strong>Tags:</strong>
+                        <div class="mt-2">
+                            {% for tag in program.tags.all %}
+                            <span class="tag-badge">{{ tag.name }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
                     
-                    <div class="d-flex justify-content-between align-items-center">
-                        <a href="#" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#programModal{{ program.id }}">
-                            View Details
+                    <div class="d-flex justify-content-between align-items-center mt-4">
+                        <div class="action-buttons">
+                            <a href="#" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#programModal{{ program.id }}">
+                                <i class="fas fa-eye"></i> View Details
+                            </a>
+                            <a href="{% url 'training_blog_list' program.id %}" class="btn btn-success">
+                                <i class="fas fa-blog"></i> Blog Posts
+                            </a>
+                        </div>
+                        {% if user.userprofile.role in 'ADMIN,HR' %}
+                        <div class="action-buttons">
+                            <a href="{% url 'edit_training_program' program.id %}" class="btn btn-warning">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a href="{% url 'delete_training_program' program.id %}" class="btn btn-danger">
+                                <i class="fas fa-trash"></i> Delete
+                            </a>
+                        </div>
+                        {% elif program.status == 'UPCOMING' and program.enrolled_count < program.capacity %}
+                        <a href="{% url 'enroll_training' program.id %}" class="btn btn-primary">
+                            <i class="fas fa-user-plus"></i> Enroll Now
                         </a>
-                        {% if program.status == 'UPCOMING' and program.enrolled_count < program.capacity %}
-                        <a href="{% url 'enroll_training' program.id %}" class="btn btn-primary">Enroll Now</a>
                         {% endif %}
                     </div>
                 </div>
@@ -77,12 +260,32 @@
                                 <p><strong>Enrollment:</strong> {{ program.enrolled_count }}/{{ program.capacity }}</p>
                             </div>
                         </div>
+
+                        {% if program.tags.all %}
+                        <div class="mt-3">
+                            <h6>Tags</h6>
+                            <div>
+                                {% for tag in program.tags.all %}
+                                <span class="tag-badge">{{ tag.name }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
                     <div class="modal-footer">
-                        {% if program.status == 'UPCOMING' and program.enrolled_count < program.capacity %}
-                        <a href="{% url 'enroll_training' program.id %}" class="btn btn-primary">Enroll Now</a>
-                        {% endif %}
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <div class="action-buttons">
+                            <a href="{% url 'training_blog_list' program.id %}" class="btn btn-success">
+                                <i class="fas fa-blog"></i> View Blog Posts
+                            </a>
+                            {% if program.status == 'UPCOMING' and program.enrolled_count < program.capacity %}
+                            <a href="{% url 'enroll_training' program.id %}" class="btn btn-primary">
+                                <i class="fas fa-user-plus"></i> Enroll Now
+                            </a>
+                            {% endif %}
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                <i class="fas fa-times"></i> Close
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -96,4 +299,65 @@
         {% endfor %}
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const programsContainer = document.getElementById('programsContainer');
+    const programCards = document.querySelectorAll('.program-card');
+    const tagFilters = document.getElementById('tagFilters');
+    
+    // Collect all unique tags
+    const allTags = new Set();
+    programCards.forEach(card => {
+        const tags = card.dataset.tags.split(',').filter(tag => tag);
+        tags.forEach(tag => allTags.add(tag));
+    });
+    
+    // Create tag filter buttons
+    allTags.forEach(tag => {
+        const tagButton = document.createElement('span');
+        tagButton.className = 'tag-badge me-2 mb-2';
+        tagButton.textContent = tag;
+        tagButton.onclick = () => toggleTagFilter(tag);
+        tagFilters.appendChild(tagButton);
+    });
+    
+    let activeTags = new Set();
+    
+    function toggleTagFilter(tag) {
+        const tagButton = Array.from(tagFilters.children).find(btn => btn.textContent === tag);
+        if (activeTags.has(tag)) {
+            activeTags.delete(tag);
+            tagButton.classList.remove('active');
+        } else {
+            activeTags.add(tag);
+            tagButton.classList.add('active');
+        }
+        filterPrograms();
+    }
+    
+    function filterPrograms() {
+        const searchTerm = searchInput.value.toLowerCase();
+        
+        programCards.forEach(card => {
+            const title = card.querySelector('.card-title').textContent.toLowerCase();
+            const description = card.querySelector('.card-text').textContent.toLowerCase();
+            const tags = card.dataset.tags.toLowerCase();
+            
+            const matchesSearch = title.includes(searchTerm) || 
+                                description.includes(searchTerm) ||
+                                tags.includes(searchTerm);
+            
+            const matchesTags = activeTags.size === 0 || 
+                              Array.from(activeTags).some(tag => 
+                                card.dataset.tags.toLowerCase().includes(tag.toLowerCase()));
+            
+            card.style.display = matchesSearch && matchesTags ? 'block' : 'none';
+        });
+    }
+    
+    searchInput.addEventListener('input', filterPrograms);
+});
+</script>
 {% endblock %} 

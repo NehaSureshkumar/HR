@@ -1,0 +1,75 @@
+{% extends 'employee/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Blog Posts - {{ program.title }}</h2>
+        <a href="{% url 'create_training_blog' program.id %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> New Blog Post
+        </a>
+    </div>
+
+    <!-- Tag Filter -->
+    <div class="mb-4">
+        <h5>Filter by Tags:</h5>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{% url 'training_blog_list' program.id %}" 
+               class="btn btn-outline-secondary {% if not current_tag %}active{% endif %}">
+                All
+            </a>
+            {% for tag in tags %}
+            <a href="{% url 'training_blog_list' program.id %}?tag={{ tag.name }}" 
+               class="btn btn-outline-secondary {% if current_tag == tag.name %}active{% endif %}">
+                {{ tag.name }}
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Blog Posts -->
+    <div class="row">
+        {% for blog in blogs %}
+        <div class="col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">{{ blog.title }}</h5>
+                    <h6 class="card-subtitle mb-2 text-muted">
+                        By {{ blog.author.get_full_name|default:blog.author.username }} on {{ blog.created_at|date:"M d, Y" }}
+                    </h6>
+                    
+                    <p class="card-text">{{ blog.content|truncatewords:30 }}</p>
+                    
+                    <div class="mb-3">
+                        <strong>Tags:</strong>
+                        {% for tag in blog.tags.all %}
+                        <span class="badge bg-info me-1">{{ tag.name }}</span>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <a href="{% url 'training_blog_detail' blog.id %}" class="btn btn-info">Read More</a>
+                        {% if user == blog.author %}
+                        <div>
+                            <a href="{% url 'edit_training_blog' blog.id %}" class="btn btn-warning">
+                                <i class="fas fa-edit"></i> Edit
+                            </a>
+                            <a href="{% url 'delete_training_blog' blog.id %}" class="btn btn-danger"
+                               onclick="return confirm('Are you sure you want to delete this blog post?')">
+                                <i class="fas fa-trash"></i> Delete
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                No blog posts available for this training program.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %} 

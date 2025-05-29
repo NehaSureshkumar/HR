@@ -342,6 +342,46 @@ class TrainingProgram(models.Model):
     class Meta:
         db_table = 'employee_training_program'
 
+class TrainingTag(models.Model):
+    name = models.CharField(max_length=50, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        db_table = 'employee_training_tag'
+
+class TrainingBlog(models.Model):
+    program = models.ForeignKey(TrainingProgram, on_delete=models.CASCADE, related_name='blogs')
+    author = models.ForeignKey(User, on_delete=models.CASCADE)
+    title = models.CharField(max_length=200)
+    content = models.TextField()
+    tags = models.ManyToManyField(TrainingTag, related_name='blogs')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_published = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.title} - {self.program.title}"
+
+    class Meta:
+        db_table = 'employee_training_blog'
+        ordering = ['-created_at']
+
+class TrainingDocument(models.Model):
+    blog = models.ForeignKey(TrainingBlog, on_delete=models.CASCADE, related_name='documents')
+    file = models.FileField(upload_to='training_documents/')
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.title
+
+    class Meta:
+        db_table = 'employee_training_document'
+
 class TrainingEnrollment(models.Model):
     employee = models.ForeignKey('Employee', on_delete=models.CASCADE)
     program = models.ForeignKey(TrainingProgram, on_delete=models.CASCADE)

@@ -1,0 +1,24 @@
+{% extends 'employee/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-body">
+            <h2 class="card-title mb-4">Delete Training Program</h2>
+            
+            <p class="alert alert-danger">
+                Are you sure you want to delete the training program "{{ program.title }}"?
+                This action cannot be undone.
+            </p>
+            
+            <form method="post">
+                {% csrf_token %}
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-danger">Delete Training Program</button>
+                    <a href="{% url 'training_program_list' %}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from employee.models import Employee, Attendance, Notice, workAssignments, Document, UserProfile, AuditLog, JobOpening, ProfileUpdateRequest, EmployeeInformation, IDCard, WiFiAccess, ParkingDetails, InsuranceDetails
+from employee.models import Employee, Attendance, Notice, workAssignments, Document, UserProfile, AuditLog, JobOpening, ProfileUpdateRequest, EmployeeInformation, IDCard, WiFiAccess, ParkingDetails, InsuranceDetails, TrainingProgram, TrainingBlog, TrainingDocument, TrainingTag
 
 class EmployeeAdmin(admin.ModelAdmin):
     list_display = ('eID', 'firstName', 'lastName', 'designation', 'email', 'joinDate')
@@ -51,6 +51,31 @@ class InsuranceDetailsAdmin(admin.ModelAdmin):
     list_display = ('employee', 'insured_name', 'relationship', 'sum_insured')
     search_fields = ('employee__eID', 'employee__firstName', 'employee__lastName', 'insured_name')
     list_filter = ('relationship', 'endorsement_type', 'critical_illness_maternity')
+
+@admin.register(TrainingProgram)
+class TrainingProgramAdmin(admin.ModelAdmin):
+    list_display = ('title', 'start_date', 'end_date', 'capacity', 'enrolled_count', 'status')
+    list_filter = ('status', 'start_date', 'end_date')
+    search_fields = ('title', 'description')
+    date_hierarchy = 'start_date'
+
+@admin.register(TrainingBlog)
+class TrainingBlogAdmin(admin.ModelAdmin):
+    list_display = ('title', 'program', 'author', 'created_at', 'is_published')
+    list_filter = ('is_published', 'created_at', 'program')
+    search_fields = ('title', 'content', 'program__title')
+    filter_horizontal = ('tags',)
+
+@admin.register(TrainingDocument)
+class TrainingDocumentAdmin(admin.ModelAdmin):
+    list_display = ('title', 'blog', 'uploaded_at')
+    search_fields = ('title', 'blog__title')
+    list_filter = ('uploaded_at',)
+
+@admin.register(TrainingTag)
+class TrainingTagAdmin(admin.ModelAdmin):
+    list_display = ('name',)
+    search_fields = ('name',)
 
 admin.site.register(Employee, EmployeeAdmin)
 admin.site.register(Attendance)

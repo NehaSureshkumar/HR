@@ -4,7 +4,8 @@ from employee.models import (
     Employee, Attendance, Notice, workAssignments, 
     Document, UserProfile, AuditLog, JobOpening,
     designations_opt, DOCUMENT_TYPES, PerformanceReview, Goal, LeaveRequest,
-    TrainingProgram, TrainingEnrollment, Payroll, Project, EmployeeInformation, IDCard, WiFiAccess, ParkingDetails, InsuranceDetails, ProfileUpdateRequest
+    TrainingProgram, TrainingEnrollment, Payroll, Project, EmployeeInformation, IDCard, WiFiAccess, ParkingDetails, InsuranceDetails, ProfileUpdateRequest,
+    TrainingTag, TrainingBlog, TrainingDocument
 )
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -931,14 +932,63 @@ def mark_attendance(request):
 def training_program_list(request):
     try:
         user_profile = UserProfile.objects.get(user=request.user)
-        if user_profile.role in ['ADMIN', 'HR']:
-            programs = TrainingProgram.objects.all()
-        else:
-            programs = TrainingProgram.objects.filter(status='UPCOMING')
+        # Show all programs regardless of role
+        programs = TrainingProgram.objects.all()
         return render(request, 'employee/training_program_list.html', {'programs': programs})
     except UserProfile.DoesNotExist:
         programs = []
         return render(request, 'employee/training_program_list.html', {'programs': programs})
+
+@login_required
+@role_required(['ADMIN', 'HR'])
+def create_training_program(request):
+    if request.method == 'POST':
+        form = TrainingProgramForm(request.POST)
+        if form.is_valid():
+            program = form.save()
+            messages.success(request, 'Training program created successfully!')
+            return redirect('training_program_list')
+    else:
+        form = TrainingProgramForm()
+    
+    return render(request, 'employee/create_training_program.html', {
+        'form': form,
+        'page_title': 'Create Training Program'
+    })
+
+@login_required
+@role_required(['ADMIN', 'HR'])
+def edit_training_program(request, program_id):
+    program = get_object_or_404(TrainingProgram, id=program_id)
+    
+    if request.method == 'POST':
+        form = TrainingProgramForm(request.POST, instance=program)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Training program updated successfully!')
+            return redirect('training_program_list')
+    else:
+        form = TrainingProgramForm(instance=program)
+    
+    return render(request, 'employee/create_training_program.html', {
+        'form': form,
+        'program': program,
+        'page_title': 'Edit Training Program'
+    })
+
+@login_required
+@role_required(['ADMIN', 'HR'])
+def delete_training_program(request, program_id):
+    program = get_object_or_404(TrainingProgram, id=program_id)
+    
+    if request.method == 'POST':
+        program.delete()
+        messages.success(request, 'Training program deleted successfully!')
+        return redirect('training_program_list')
+    
+    return render(request, 'employee/delete_training_program.html', {
+        'program': program
+    })
 
 @login_required
 def enroll_training(request, program_id):
@@ -962,212 +1012,142 @@ def enroll_training(request, program_id):
     return redirect('training_program_list')
 
 @login_required
-def payroll_list(request):
-    try:
-        user_profile = UserProfile.objects.get(user=request.user)
-        if user_profile.role in ['ADMIN', 'HR']:
-            payroll_records = Payroll.objects.all()
-        else:
-            employee = Employee.objects.get(eID=request.user.username)
-            payroll_records = Payroll.objects.filter(employee=employee)
-        return render(request, 'employee/payroll_list.html', {'payroll_records': payroll_records})
-    except (UserProfile.DoesNotExist, Employee.DoesNotExist):
-        payroll_records = []
-        return render(request, 'employee/payroll_list.html', {'payroll_records': payroll_records})
-
-@login_required
-@staff_required
-def create_employee(request):
-    if request.method == 'POST':
-        eid = request.POST.get('eid')
-        first_name = request.POST.get('first_name')
-        middle_name = request.POST.get('middle_name')
-        last_name = request.POST.get('last_name')
-        phone = request.POST.get('phone')
-        email = request.POST.get('email')
-        addhar = request.POST.get('addhar')
-        dob = request.POST.get('dob')
-        designation = request.POST.get('designation')
-        salary = request.POST.get('salary')
-        join_date = request.POST.get('join_date')
-        password = request.POST.get('password')
-        # Create User
-        if User.objects.filter(username=eid).exists():
-            messages.error(request, 'A user with this Employee ID already exists.')
-            return redirect('create_employee')
-        user = User.objects.create_user(username=eid, email=email, password=password, first_name=first_name, last_name=last_name)
-        # Create Employee
-        Employee.objects.create(
-            eID=eid,
-            firstName=first_name,
-            middleName=middle_name,
-            lastName=last_name,
-            phoneNo=phone,
-            email=email,
-            addharNo=addhar,
-            dOB=dob,
-            designation=designation,
-            salary=salary,
-            joinDate=join_date
-        )
-        # Create UserProfile
-        UserProfile.objects.create(user=user, role='EMPLOYEE', profile_completion=0)
-        messages.success(request, 'Employee and account created successfully!')
-        return redirect('admin_dashboard')
-    return render(request, 'employee/create_employee.html', {'designations': designations_opt})
-
-# Attendance Regulation (admin only)
-@login_required
-@staff_required
-def regulate_attendance(request, record_id):
-    record = get_object_or_404(Attendance, id=record_id)
-    if request.method == 'POST':
-        record.status = request.POST.get('status', record.status)
-        record.time_in = request.POST.get('time_in', record.time_in)
-        record.time_out = request.POST.get('time_out', record.time_out)
-        record.overtime_hours = request.POST.get('overtime_hours', record.overtime_hours)
-        record.save()
-        messages.success(request, 'Attendance record updated.')
-        return redirect('attendance_list')
-    return render(request, 'employee/regulate_attendance.html', {'record': record})
-
-# Payroll Processing (admin only)
-@login_required
-@staff_required
-def process_payroll(request, record_id):
-    record = get_object_or_404(Payroll, id=record_id)
-    if request.method == 'POST':
-        record.status = 'PROCESSED'
-        record.payment_date = timezone.now().date()
-        record.save()
-        messages.success(request, 'Payroll marked as processed.')
-        return redirect('payroll_list')
-    return JsonResponse({'success': True})
-
-# Audit Log UI (admin only)
-@login_required
-@staff_required
-def audit_log(request):
-    logs = AuditLog.objects.all().order_by('-timestamp')[:100]
-    return render(request, 'employee/audit_log.html', {'logs': logs})
-
-# Notification stub (to be implemented)
-@login_required
-@staff_required
-def send_notification(request):
-    # Placeholder for notification logic
-    return JsonResponse({'success': True})
-
-# Analytics stub (to be implemented)
-@login_required
-@staff_required
-def analytics_dashboard(request):
-    # Placeholder for analytics logic
-    return render(request, 'employee/analytics_dashboard.html')
-
-# --- Generic Workflow of Actions (Stub) ---
-@login_required
-@role_required(['ADMIN', 'HR'])
-def workflow_actions(request):
-    """Stub for a generic workflow engine (e.g., onboarding, approvals, document flows)."""
-    # TODO: Implement workflow engine for multi-step actions
-    return render(request, 'employee/workflow_actions.html')
-
-# --- Enhanced Search Functionality (Stub) ---
-@login_required
-@role_required(['ADMIN', 'HR'])
-def search(request):
-    """Search employees, documents, jobs, etc."""
-    # TODO: Implement search logic and UI
-    query = request.GET.get('q', '')
-    results = []
-    return render(request, 'employee/search.html', {'query': query, 'results': results})
-
-# --- Reporting System (Stub) ---
-@login_required
-@role_required(['ADMIN', 'HR'])
-def reporting_dashboard(request):
-    """Reporting dashboard for leave, attendance, payroll, documents, etc."""
-    # TODO: Implement reporting logic and charts
-    return render(request, 'employee/reporting_dashboard.html')
-
-# --- Admin CRUD Views (Stubs) ---
-@login_required
-@role_required(['ADMIN', 'HR'])
-def employee_crud(request):
-    """Admin CRUD for Employee model."""
-    # TODO: Implement CRUD logic (list, create, update, delete)
-    return render(request, 'employee/employee_crud.html')
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def document_crud(request):
-    """Admin CRUD for Document model."""
-    # TODO: Implement CRUD logic (list, create, update, delete)
-    return render(request, 'employee/document_crud.html')
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def job_crud(request):
-    """Admin CRUD for JobOpening model."""
-    # TODO: Implement CRUD logic (list, create, update, delete)
-    return render(request, 'employee/job_crud.html')
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def userprofile_crud(request):
-    """Admin CRUD for UserProfile model."""
-    # TODO: Implement CRUD logic (list, create, update, delete)
-    return render(request, 'employee/userprofile_crud.html')
-
-# --- Dynamic View Generation System (Stub) ---
-@login_required
-@role_required(['ADMIN', 'HR', 'EMPLOYEE'])
-def dynamic_view(request, view_name):
-    """Dynamically render views based on role and view_name."""
-    # TODO: Implement dynamic view logic
-    return render(request, f'employee/dynamic/{view_name}.html')
-
-# Add this new view for the admin panel
-@login_required
-@role_required(['ADMIN', 'HR'])
-def admin_panel(request):
-    """Protected Django admin panel access."""
-    if not request.user.is_staff:
-        messages.error(request, "You don't have permission to access the admin panel.")
-        return redirect('dashboard')
-    return admin.site.index(request)
-
-@login_required
-def create_notice(request):
-    from employee.models import NOTICE_TAGS
-    if request.method == 'POST':
-        title = request.POST.get('title')
-        description = request.POST.get('description')
-        tag = request.POST.get('tag', 'GENERAL')
-        notice = Notice.objects.create(
-            Id=f'NTC-{uuid.uuid4().hex[:8].upper()}',
-            title=title,
-            description=description,
-            publishDate=timezone.now(),
-            tag=tag,
-            created_by=request.user
-        )
-        messages.success(request, 'Notice posted successfully!')
-        return redirect('notice')
-    return render(request, 'employee/create_notice.html', {'tags': NOTICE_TAGS})
-
-@login_required
-def delete_notice(request, id):
-    notice = get_object_or_404(Notice, Id=id)
-    user_profile = UserProfile.objects.get(user=request.user)
-    # Only creator or HR/Admin can delete
-    if notice.created_by == request.user or user_profile.role in ['ADMIN', 'HR']:
-        notice.delete()
-        messages.success(request, 'Notice deleted successfully!')
+def training_blog_list(request, program_id):
+    program = get_object_or_404(TrainingProgram, id=program_id)
+    tag = request.GET.get('tag')
+    
+    if tag:
+        blogs = program.blogs.filter(tags__name=tag, is_published=True)
     else:
-        messages.error(request, 'You do not have permission to delete this notice.')
-    return redirect('notice')
+        blogs = program.blogs.filter(is_published=True)
+    
+    tags = TrainingTag.objects.filter(blogs__program=program).distinct()
+    
+    context = {
+        'program': program,
+        'blogs': blogs,
+        'tags': tags,
+        'current_tag': tag
+    }
+    return render(request, 'employee/training_blog_list.html', context)
+
+@login_required
+def create_training_blog(request, program_id):
+    program = get_object_or_404(TrainingProgram, id=program_id)
+    
+    if request.method == 'POST':
+        form = TrainingBlogForm(request.POST, request.FILES)
+        if form.is_valid():
+            blog = form.save(commit=False)
+            blog.program = program
+            blog.author = request.user
+            blog.save()
+            
+            # Handle tags
+            tag_list = form.cleaned_data['tags']
+            for tag_name in tag_list:
+                tag, _ = TrainingTag.objects.get_or_create(name=tag_name)
+                blog.tags.add(tag)
+            
+            # Handle documents
+            files = request.FILES.getlist('documents')
+            for file in files:
+                TrainingDocument.objects.create(
+                    blog=blog,
+                    file=file,
+                    title=file.name
+                )
+            
+            messages.success(request, 'Blog post created successfully.')
+            return redirect('training_blog_list', program_id=program.id)
+    else:
+        form = TrainingBlogForm()
+    
+    context = {
+        'form': form,
+        'program': program,
+        'blog': None
+    }
+    return render(request, 'employee/create_training_blog.html', context)
+
+@login_required
+def training_blog_detail(request, blog_id):
+    blog = get_object_or_404(TrainingBlog, id=blog_id)
+    context = {
+        'blog': blog,
+        'documents': blog.documents.all()
+    }
+    return render(request, 'employee/training_blog_detail.html', context)
+
+@login_required
+def edit_training_blog(request, blog_id):
+    blog = get_object_or_404(TrainingBlog, id=blog_id)
+    
+    if request.user != blog.author:
+        messages.error(request, 'You do not have permission to edit this blog post.')
+        return redirect('training_blog_detail', blog_id=blog.id)
+    
+    if request.method == 'POST':
+        form = TrainingBlogForm(request.POST, request.FILES, instance=blog)
+        if form.is_valid():
+            blog = form.save()
+            
+            # Handle tags
+            blog.tags.clear()
+            tag_list = form.cleaned_data['tags']
+            for tag_name in tag_list:
+                tag, _ = TrainingTag.objects.get_or_create(name=tag_name)
+                blog.tags.add(tag)
+            
+            # Handle new documents
+            files = request.FILES.getlist('documents')
+            for file in files:
+                TrainingDocument.objects.create(
+                    blog=blog,
+                    file=file,
+                    title=file.name
+                )
+            
+            messages.success(request, 'Blog post updated successfully.')
+            return redirect('training_blog_detail', blog_id=blog.id)
+    else:
+        initial_data = {
+            'tags': ', '.join(tag.name for tag in blog.tags.all())
+        }
+        form = TrainingBlogForm(instance=blog, initial=initial_data)
+    
+    context = {
+        'form': form,
+        'blog': blog,
+        'program': blog.program
+    }
+    return render(request, 'employee/create_training_blog.html', context)
+
+@login_required
+def delete_training_blog(request, blog_id):
+    blog = get_object_or_404(TrainingBlog, id=blog_id)
+    
+    if request.user != blog.author:
+        messages.error(request, 'You do not have permission to delete this blog post.')
+        return redirect('training_blog_detail', blog_id=blog.id)
+    
+    program_id = blog.program.id
+    blog.delete()
+    messages.success(request, 'Blog post deleted successfully.')
+    return redirect('training_blog_list', program_id=program_id)
+
+@login_required
+def delete_training_document(request, document_id):
+    document = get_object_or_404(TrainingDocument, id=document_id)
+    blog_id = document.blog.id
+    
+    if request.user != document.blog.author:
+        messages.error(request, 'You do not have permission to delete this document.')
+        return redirect('training_blog_detail', blog_id=blog_id)
+    
+    document.delete()
+    messages.success(request, 'Document deleted successfully.')
+    return redirect('training_blog_detail', blog_id=blog_id)
 
 @login_required
 @role_required(['HR', 'Admin'])
@@ -1695,3 +1675,85 @@ def employee_documents(request, employee_id):
         'active_page': 'documents'
     }
     return render(request, 'employee/employee_documents.html', context)
+
+@login_required
+def create_notice(request):
+    from employee.models import NOTICE_TAGS
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        description = request.POST.get('description')
+        tag = request.POST.get('tag', 'GENERAL')
+        notice = Notice.objects.create(
+            Id=f'NTC-{uuid.uuid4().hex[:8].upper()}',
+            title=title,
+            description=description,
+            publishDate=timezone.now(),
+            tag=tag,
+            created_by=request.user
+        )
+        messages.success(request, 'Notice posted successfully!')
+        return redirect('notice')
+    return render(request, 'employee/create_notice.html', {'tags': NOTICE_TAGS})
+
+@login_required
+def delete_notice(request, id):
+    notice = get_object_or_404(Notice, Id=id)
+    user_profile = UserProfile.objects.get(user=request.user)
+    # Only creator or HR/Admin can delete
+    if notice.created_by == request.user or user_profile.role in ['ADMIN', 'HR']:
+        notice.delete()
+        messages.success(request, 'Notice deleted successfully!')
+    else:
+        messages.error(request, 'You do not have permission to delete this notice.')
+    return redirect('notice')
+
+@login_required
+@role_required(['ADMIN', 'HR'])
+def admin_panel(request):
+    """Protected Django admin panel access."""
+    if not request.user.is_staff:
+        messages.error(request, "You don't have permission to access the admin panel.")
+        return redirect('dashboard')
+    from django.contrib import admin
+    return admin.site.index(request)
+
+@login_required
+@role_required(['ADMIN', 'HR'])
+def create_employee(request):
+    if request.method == 'POST':
+        eid = request.POST.get('eid')
+        first_name = request.POST.get('first_name')
+        middle_name = request.POST.get('middle_name')
+        last_name = request.POST.get('last_name')
+        phone = request.POST.get('phone')
+        email = request.POST.get('email')
+        addhar = request.POST.get('addhar')
+        dob = request.POST.get('dob')
+        designation = request.POST.get('designation')
+        salary = request.POST.get('salary')
+        join_date = request.POST.get('join_date')
+        password = request.POST.get('password')
+        # Create User
+        if User.objects.filter(username=eid).exists():
+            messages.error(request, 'A user with this Employee ID already exists.')
+            return redirect('create_employee')
+        user = User.objects.create_user(username=eid, email=email, password=password, first_name=first_name, last_name=last_name)
+        # Create Employee
+        Employee.objects.create(
+            eID=eid,
+            firstName=first_name,
+            middleName=middle_name,
+            lastName=last_name,
+            phoneNo=phone,
+            email=email,
+            addharNo=addhar,
+            dOB=dob,
+            designation=designation,
+            salary=salary,
+            joinDate=join_date
+        )
+        # Create UserProfile
+        UserProfile.objects.create(user=user, role='EMPLOYEE', profile_completion=0)
+        messages.success(request, 'Employee and account created successfully!')
+        return redirect('admin_dashboard')
+    return render(request, 'employee/create_employee.html', {'designations': designations_opt})

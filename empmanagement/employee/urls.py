@@ -101,6 +101,19 @@ urlpatterns = [
     
     # Training Program List
     path('training/', views.training_program_list, name='training_program_list'),
+    path('training/create/', views.create_training_program, name='create_training_program'),
+    path('training/<int:program_id>/edit/', views.edit_training_program, name='edit_training_program'),
+    path('training/<int:program_id>/delete/', views.delete_training_program, name='delete_training_program'),
+    path('training/<int:program_id>/enroll/', views.enroll_training, name='enroll_training'),
+    
+    # Training Blog URLs
+    path('training/<int:program_id>/blogs/', views.training_blog_list, name='training_blog_list'),
+    path('training/<int:program_id>/blogs/create/', views.create_training_blog, name='create_training_blog'),
+    path('training/blogs/<int:blog_id>/', views.training_blog_detail, name='training_blog_detail'),
+    path('training/blogs/<int:blog_id>/edit/', views.edit_training_blog, name='edit_training_blog'),
+    path('training/blogs/<int:blog_id>/delete/', views.delete_training_blog, name='delete_training_blog'),
+    path('training/documents/<int:document_id>/delete/', views.delete_training_document, name='delete_training_document'),
+    
     path('', include(router.urls)),
     path('api/docs/', login_required(schema_view.with_ui('swagger', cache_timeout=0)), name='api-docs'),
     path('profile/forms/', views.employee_profile_forms, name='employee_profile_forms'),

@@ -1,6 +1,6 @@
 from tkinter import Widget
 from django import forms
-from .models import workAssignments, Requests, Document, Employee, UserProfile, EmployeeInformation, IDCard, WiFiAccess, ParkingDetails, InsuranceDetails
+from .models import workAssignments, Requests, Document, Employee, UserProfile, EmployeeInformation, IDCard, WiFiAccess, ParkingDetails, InsuranceDetails, TrainingBlog, TrainingDocument, TrainingProgram
 
 class workform(forms.ModelForm):
     class Meta:
@@ -134,4 +134,46 @@ class InsuranceDetailsForm(forms.ModelForm):
             'endorsement_type': forms.Select(attrs={'class': 'form-control'}),
             'critical_illness_maternity': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'remarks': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+class TrainingBlogForm(forms.ModelForm):
+    tags = forms.CharField(widget=forms.TextInput(attrs={
+        'class': 'form-control',
+        'placeholder': 'Enter tags separated by commas'
+    }))
+
+    class Meta:
+        model = TrainingBlog
+        fields = ['title', 'content', 'tags', 'is_published']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control'}),
+            'content': forms.Textarea(attrs={'class': 'form-control', 'rows': 10}),
+            'is_published': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+    def clean_tags(self):
+        tags = self.cleaned_data['tags']
+        tag_list = [tag.strip() for tag in tags.split(',') if tag.strip()]
+        return tag_list
+
+class TrainingDocumentForm(forms.ModelForm):
+    class Meta:
+        model = TrainingDocument
+        fields = ['title', 'file', 'description']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+class TrainingProgramForm(forms.ModelForm):
+    class Meta:
+        model = TrainingProgram
+        fields = ['title', 'description', 'start_date', 'end_date', 'capacity', 'status']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 5}),
+            'start_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'end_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'capacity': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
+            'status': forms.Select(attrs={'class': 'form-control'})
         }

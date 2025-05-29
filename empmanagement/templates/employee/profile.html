@@ -160,6 +160,21 @@
         {% else %}
         <p class="text-gray-400">No documents uploaded.</p>
         {% endif %}
+
+        <!-- Document Upload Form -->
+        <form method="post" enctype="multipart/form-data" class="mt-6">
+            {% csrf_token %}
+            <input type="hidden" name="document_type" value="PASSBOOK">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-gray-700 font-medium mb-1">Passbook</label>
+                    <input type="file" name="document" required class="w-full border rounded px-3 py-2">
+                </div>
+            </div>
+            <div class="mt-4">
+                <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700 font-medium">Upload Passbook</button>
+            </div>
+        </form>
     </div>
 </div>
 
