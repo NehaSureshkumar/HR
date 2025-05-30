@@ -901,12 +901,30 @@ def attendance_list(request):
         user_profile = UserProfile.objects.get(user=request.user)
         if user_profile.role in ['ADMIN', 'HR']:
             attendance_records = Attendance.objects.all()
+            leave_requests = LeaveRequest.objects.filter(status='APPROVED').order_by('-start_date')
+            # Get employee names for leave requests
+            for leave in leave_requests:
+                try:
+                    employee = Employee.objects.get(eID=leave.eId)
+                    leave.employee_name = f"{employee.firstName} {employee.lastName}"
+                except Employee.DoesNotExist:
+                    leave.employee_name = leave.eId
         else:
             attendance_records = Attendance.objects.filter(eId=request.user.username)
-        return render(request, 'employee/attendance_list.html', {'attendance_records': attendance_records})
+            leave_requests = LeaveRequest.objects.filter(eId=request.user.username, status='APPROVED').order_by('-start_date')
+            for leave in leave_requests:
+                leave.employee_name = request.user.get_full_name() or request.user.username
+        return render(request, 'employee/attendance_list.html', {
+            'attendance_records': attendance_records,
+            'leave_requests': leave_requests
+        })
     except UserProfile.DoesNotExist:
         attendance_records = []
-        return render(request, 'employee/attendance_list.html', {'attendance_records': attendance_records})
+        leave_requests = []
+        return render(request, 'employee/attendance_list.html', {
+            'attendance_records': attendance_records,
+            'leave_requests': leave_requests
+        })
 
 @login_required
 def mark_attendance(request):

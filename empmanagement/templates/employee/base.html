@@ -46,7 +46,7 @@
 
 <div class="flex min-h-screen">
     <!-- Sidebar -->
-    <aside class="w-64 bg-blue-900 text-white">
+    <aside class="w-64 bg-blue-900 text-white flex flex-col h-screen">
         <div class="p-4">
             <h1 class="text-2xl font-bold">Dashboard</h1>
         </div>
@@ -70,13 +70,16 @@
                     <li><a href="{% url 'notifications' %}" class="sidebar-link flex items-center px-6 py-3 hover:bg-blue-800 rounded transition group"><span class="material-icons mr-3 text-blue-200 group-hover:text-white">notifications</span> <span>Notifications</span></a></li>
                     <li><a href="{% url 'attendance_list' %}" class="sidebar-link flex items-center px-6 py-3 hover:bg-blue-800 rounded transition group"><span class="material-icons mr-3 text-blue-200 group-hover:text-white">event</span> <span>Attendance</span></a></li>
                     <li><a href="{% url 'project_list' 'ongoing' %}" class="sidebar-link flex items-center px-6 py-3 hover:bg-blue-800 rounded transition group"><span class="material-icons mr-3 text-blue-200 group-hover:text-white">autorenew</span> <span>Ongoing Projects</span></a></li>
-                    <li><a href="{% url 'project_list' 'at-risk' %}" class="sidebar-link flex items-center px-6 py-3 hover:bg-blue-800 rounded transition group"><span class="material-icons mr-3 text-blue-200 group-hover:text-white">warning</span> <span>At Risk</span></a></li>
-                    <li><a href="{% url 'project_list' 'upcoming' %}" class="sidebar-link flex items-center px-6 py-3 hover:bg-blue-800 rounded transition group"><span class="material-icons mr-3 text-blue-200 group-hover:text-white">event</span> <span>Upcoming Projects</span></a></li>
-                    <li><a href="{% url 'project_list' 'on-schedule' %}" class="sidebar-link flex items-center px-6 py-3 hover:bg-blue-800 rounded transition group"><span class="material-icons mr-3 text-blue-200 group-hover:text-white">schedule</span> <span>On Schedule</span></a></li>
-                    <li class="mt-4 border-t border-blue-800 pt-4"><a href="{% url 'manage_job_openings' %}" class="sidebar-link flex items-center px-6 py-3 hover:bg-blue-800 rounded transition group"><span class="material-icons mr-3 text-blue-200 group-hover:text-white">work</span> <span>Job Openings</span></a></li>
                 {% endif %}
             </ul>
         </nav>
+        <!-- Logout Section -->
+        <div class="mt-auto border-t border-blue-800">
+            <a href="{% url 'logout' %}" class="sidebar-link flex items-center px-6 py-4 hover:bg-blue-800 transition group">
+                <span class="material-icons mr-3 text-blue-200 group-hover:text-white">logout</span>
+                <span>Logout</span>
+            </a>
+        </div>
     </aside>
     <!-- Main Content -->
     <main class="flex-1 p-6 bg-gradient-to-br from-gray-50 via-white to-blue-50 min-h-screen font-sans">

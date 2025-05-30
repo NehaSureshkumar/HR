@@ -3,7 +3,10 @@
 {% block content %}
 <div class="max-w-6xl mx-auto py-8 px-4">
     <h2 class="text-3xl font-bold mb-8 text-blue-800">Attendance Records</h2>
-    <div class="bg-white rounded-lg shadow overflow-hidden">
+    
+    <!-- Attendance Records -->
+    <div class="bg-white rounded-lg shadow overflow-hidden mb-8">
+        <h3 class="text-xl font-semibold p-4 bg-gray-50 border-b">Daily Attendance</h3>
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
@@ -34,6 +37,41 @@
                 {% empty %}
                 <tr>
                     <td colspan="5" class="px-6 py-4 text-center text-gray-500">No attendance records found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Leave Records -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <h3 class="text-xl font-semibold p-4 bg-gray-50 border-b">Approved Leave Records</h3>
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Type</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Date</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for leave in leave_requests %}
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ leave.employee_name }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ leave.get_leave_type_display }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ leave.start_date|date:"M d, Y" }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ leave.end_date|date:"M d, Y" }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {% with duration=leave.end_date|timeuntil:leave.start_date %}
+                            {{ duration }}
+                        {% endwith %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="px-6 py-4 text-center text-gray-500">No approved leave records found.</td>
                 </tr>
                 {% endfor %}
             </tbody>

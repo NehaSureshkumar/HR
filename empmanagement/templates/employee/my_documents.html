@@ -15,39 +15,103 @@
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
+                {% with has_passbook=False %}
+                    {% for doc in documents %}
+                        {% if doc.document_type == 'PASSBOOK' %}
+                            {% with has_passbook=True %}
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ doc.get_document_type_display }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ doc.uploaded_at|date:"M d, Y" }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                        {% if doc.status == 'APPROVED' %}bg-green-100 text-green-800
+                                        {% elif doc.status == 'REJECTED' %}bg-red-100 text-red-800
+                                        {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                        {{ doc.status }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {% if doc.status == 'REJECTED' and doc.comments %}
+                                        <span class="text-red-600">{{ doc.comments }}</span>
+                                    {% elif doc.status == 'APPROVED' and doc.comments %}
+                                        <span class="text-green-600">{{ doc.comments }}</span>
+                                    {% else %}
+                                        <span class="text-gray-400">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <a href="{{ doc.file.url }}" target="_blank" class="text-blue-600 hover:text-blue-900">View</a>
+                                    {% if doc.allow_reupload and doc.status != 'PENDING' %}
+                                    <form method="post" enctype="multipart/form-data" style="display:inline;" class="ml-2">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="doc_id" value="{{ doc.id }}">
+                                        <input type="file" name="document" required class="form-control-file d-inline-block" style="width:auto;display:inline;">
+                                        <button type="submit" class="bg-yellow-500 text-white px-2 py-1 rounded text-xs hover:bg-yellow-600">Re-upload</button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endwith %}
+                        {% endif %}
+                    {% endfor %}
+                    {% if not has_passbook %}
+                    <!-- Passbook Upload Row -->
+                    <tr class="bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Passbook</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                Not Uploaded
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">-</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <form method="post" enctype="multipart/form-data" style="display:inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="document_type" value="PASSBOOK">
+                                <input type="file" name="document" required class="form-control-file d-inline-block" style="width:auto;display:inline;">
+                                <button type="submit" class="bg-blue-600 text-white px-2 py-1 rounded text-xs hover:bg-blue-700">Upload</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endif %}
+                {% endwith %}
+
                 {% for doc in documents %}
-                <tr>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ doc.get_document_type_display }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ doc.uploaded_at|date:"M d, Y" }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                            {% if doc.status == 'APPROVED' %}bg-green-100 text-green-800
-                            {% elif doc.status == 'REJECTED' %}bg-red-100 text-red-800
-                            {% else %}bg-yellow-100 text-yellow-800{% endif %}">
-                            {{ doc.status }}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {% if doc.status == 'REJECTED' and doc.comments %}
-                            <span class="text-red-600">{{ doc.comments }}</span>
-                        {% elif doc.status == 'APPROVED' and doc.comments %}
-                            <span class="text-green-600">{{ doc.comments }}</span>
-                        {% else %}
-                            <span class="text-gray-400">-</span>
-                        {% endif %}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm">
-                        <a href="{{ doc.file.url }}" target="_blank" class="text-blue-600 hover:text-blue-900">View</a>
-                        {% if doc.allow_reupload and doc.status != 'PENDING' %}
-                        <form method="post" enctype="multipart/form-data" style="display:inline;" class="ml-2">
-                            {% csrf_token %}
-                            <input type="hidden" name="doc_id" value="{{ doc.id }}">
-                            <input type="file" name="document" required class="form-control-file d-inline-block" style="width:auto;display:inline;">
-                            <button type="submit" class="bg-yellow-500 text-white px-2 py-1 rounded text-xs hover:bg-yellow-600">Re-upload</button>
-                        </form>
-                        {% endif %}
-                    </td>
-                </tr>
+                    {% if doc.document_type != 'PASSBOOK' %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ doc.get_document_type_display }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ doc.uploaded_at|date:"M d, Y" }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                {% if doc.status == 'APPROVED' %}bg-green-100 text-green-800
+                                {% elif doc.status == 'REJECTED' %}bg-red-100 text-red-800
+                                {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                {{ doc.status }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {% if doc.status == 'REJECTED' and doc.comments %}
+                                <span class="text-red-600">{{ doc.comments }}</span>
+                            {% elif doc.status == 'APPROVED' and doc.comments %}
+                                <span class="text-green-600">{{ doc.comments }}</span>
+                            {% else %}
+                                <span class="text-gray-400">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <a href="{{ doc.file.url }}" target="_blank" class="text-blue-600 hover:text-blue-900">View</a>
+                            {% if doc.allow_reupload and doc.status != 'PENDING' %}
+                            <form method="post" enctype="multipart/form-data" style="display:inline;" class="ml-2">
+                                {% csrf_token %}
+                                <input type="hidden" name="doc_id" value="{{ doc.id }}">
+                                <input type="file" name="document" required class="form-control-file d-inline-block" style="width:auto;display:inline;">
+                                <button type="submit" class="bg-yellow-500 text-white px-2 py-1 rounded text-xs hover:bg-yellow-600">Re-upload</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endif %}
                 {% empty %}
                 <tr>
                     <td colspan="5" class="px-6 py-4 text-center text-gray-500">No documents uploaded yet.</td>

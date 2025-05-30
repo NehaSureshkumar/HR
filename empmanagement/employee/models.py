@@ -22,6 +22,7 @@ DOCUMENT_TYPES = (
     ('PASSPORT', 'Passport'),
     ('BANK', 'Bank Documents'),
     ('PF', 'PF Documents'),
+    ('PASSBOOK', 'Passbook'),
     ('OTHER', 'Other'),
 )
 
