@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Account Deactivated - MS ID Management{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="alert alert-danger">
+                <h4 class="alert-heading">Account Deactivated</h4>
+                <p>Your Microsoft ID account has been deactivated. Please contact your administrator for assistance.</p>
+                <hr>
+                <p class="mb-0">
+                    <a href="{% url 'account_logout' %}" class="btn btn-outline-danger">Logout</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

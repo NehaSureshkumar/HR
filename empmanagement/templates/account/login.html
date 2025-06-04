@@ -1,0 +1,21 @@
+{% extends "base_minimal.html" %}
+{% load i18n %}
+{% load account socialaccount %}
+{% load socialaccount static %}
+
+{% block head_title %}{% trans "Sign In" %}{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto mt-10 p-8 bg-white rounded shadow">
+    <h2 class="text-2xl font-bold mb-6 text-center">Sign In</h2>
+    <a href="{% provider_login_url 'microsoft' %}" class="w-full flex items-center justify-center bg-blue-600 text-white py-3 rounded mb-4 font-semibold text-lg hover:bg-blue-700 transition">
+        <img src="{% static 'images/microsoft-logo.png' %}" alt="Microsoft" class="h-6 w-6 mr-2"> Sign in with Microsoft (Company Account)
+    </a>
+    <div class="text-center text-gray-500 mb-4">or</div>
+    <form method="post" action="{% url 'account_login' %}">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="w-full bg-gray-800 text-white py-2 rounded hover:bg-gray-900">Sign in with Email/Password</button>
+    </form>
+</div>
+{% endblock %} 

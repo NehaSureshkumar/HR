@@ -1,5 +1,5 @@
 from django.contrib import admin
-from employee.models import Employee, Attendance, Notice, workAssignments, Document, UserProfile, AuditLog, JobOpening, ProfileUpdateRequest, EmployeeInformation, IDCard, WiFiAccess, ParkingDetails, InsuranceDetails, TrainingProgram, TrainingBlog, TrainingDocument, TrainingTag
+from employee.models import Employee, Attendance, Notice, workAssignments, Document, UserProfile, AuditLog, JobOpening, ProfileUpdateRequest, EmployeeInformation, IDCard, WiFiAccess, ParkingDetails, InsuranceDetails, TrainingProgram, TrainingBlog, TrainingDocument, TrainingTag, EmailSettings
 
 class EmployeeAdmin(admin.ModelAdmin):
     list_display = ('eID', 'firstName', 'lastName', 'designation', 'email', 'joinDate')
@@ -76,6 +76,10 @@ class TrainingDocumentAdmin(admin.ModelAdmin):
 class TrainingTagAdmin(admin.ModelAdmin):
     list_display = ('name',)
     search_fields = ('name',)
+
+@admin.register(EmailSettings)
+class EmailSettingsAdmin(admin.ModelAdmin):
+    list_display = ('EMAIL_HOST_USER', 'EMAIL_HOST', 'EMAIL_PORT', 'DEFAULT_FROM_EMAIL')
 
 admin.site.register(Employee, EmployeeAdmin)
 admin.site.register(Attendance)

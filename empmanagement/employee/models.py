@@ -132,12 +132,15 @@ class Employee(models.Model):
     middleName = models.CharField(max_length=50)
     lastName = models.CharField(max_length=50)
     phoneNo = models.CharField(max_length=12,unique=True)
-    email = models.EmailField(max_length=70,unique=True)
+    email = models.EmailField(max_length=70,unique=True)  # This will be the company email
+    personal_email = models.EmailField(max_length=70,unique=True, null=True, blank=True)  # Personal email field
     addharNo = models.CharField(max_length=20,unique=True)
     dOB = models.DateField()
     designation = models.CharField(max_length=50,choices=designations_opt)
     salary = models.CharField(max_length=20)
     joinDate = models.DateField()
+    onboarding_completed = models.BooleanField(default=False)
+    onboarding_date = models.DateField(null=True, blank=True)
 
     def __str__(self):  
         return "%s %s" % (self.eID, self.firstName)
@@ -519,3 +522,25 @@ class InsuranceDetails(models.Model):
 
     def __str__(self):
         return f"{self.employee.eID} - {self.employee.firstName}" 
+
+PROVIDER_CHOICES = [
+    ('gmail', 'Gmail/Google Workspace'),
+    ('office365', 'Outlook/Office365'),
+    ('zoho', 'Zoho Mail'),
+    ('sendgrid', 'SendGrid'),
+    ('ses', 'Amazon SES'),
+    ('other', 'Other'),
+]
+
+class EmailSettings(models.Model):
+    provider = models.CharField(max_length=32, choices=PROVIDER_CHOICES, default='other')
+    EMAIL_BACKEND = models.CharField(max_length=255, default='django.core.mail.backends.smtp.EmailBackend')
+    EMAIL_HOST = models.CharField(max_length=255, default='smtp.office365.com')
+    EMAIL_PORT = models.PositiveIntegerField(default=587)
+    EMAIL_USE_TLS = models.BooleanField(default=True)
+    EMAIL_HOST_USER = models.EmailField()
+    EMAIL_HOST_PASSWORD = models.CharField(max_length=255)
+    DEFAULT_FROM_EMAIL = models.EmailField()
+
+    def __str__(self):
+        return f"SMTP: {self.EMAIL_HOST_USER} ({self.get_provider_display()})" 

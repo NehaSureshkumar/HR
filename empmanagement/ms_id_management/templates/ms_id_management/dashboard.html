@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load account socialaccount %}
+
+{% block title %}Dashboard - MS ID Management{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Microsoft ID Dashboard</h3>
+                </div>
+                <div class="card-body">
+                    {% if user.is_authenticated %}
+                        {% if has_ms_profile %}
+                            <div class="alert alert-success mb-4">
+                                <h5 class="alert-heading">Microsoft ID Status</h5>
+                                <p>Your Microsoft ID is active and ready to use.</p>
+                                <hr>
+                                <p class="mb-0">
+                                    <strong>Microsoft ID:</strong> {{ profile.ms_id }}<br>
+                                    <strong>Status:</strong> {{ profile.get_status_display }}<br>
+                                    <strong>Last Updated:</strong> {{ profile.updated_at|date:"F j, Y, g:i a" }}
+                                </p>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-warning mb-4">
+                                <h5 class="alert-heading">No Microsoft ID Profile</h5>
+                                <p>You don't have a Microsoft ID profile yet. Please contact your administrator to set up your Microsoft ID.</p>
+                                <hr>
+                                <p class="mb-0">If you're an administrator, you can set up Microsoft IDs from the admin panel.</p>
+                            </div>
+                            {% if ms_configured %}
+                                <div class="text-center mt-3">
+                                    <a href="{% provider_login_url 'microsoft' %}" class="btn btn-primary btn-lg">
+                                        <i class="fab fa-microsoft me-2"></i>Sign in with Microsoft
+                                    </a>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-danger">
+                                    <p class="mb-0">Microsoft authentication is not properly configured. Please contact your administrator.</p>
+                                </div>
+                            {% endif %}
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center mb-4">
+                            <h5 class="card-title">Welcome to MS ID Management</h5>
+                            <p class="card-text">Please sign in to access your Microsoft ID dashboard.</p>
+                        </div>
+                        <div class="d-grid gap-3">
+                            <a href="{% url 'account_login' %}" class="btn btn-primary btn-lg">
+                                <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

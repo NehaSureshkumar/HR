@@ -33,6 +33,7 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='', cast=Csv())
 # Application definition
 
 INSTALLED_APPS = [
+    'jazzmin',  # Modern admin theme
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -65,6 +66,7 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
+            BASE_DIR.parent / 'templates',  # Top-level templates directory
             BASE_DIR / 'templates',
             BASE_DIR / 'empmanagement' / 'templates',
         ],
@@ -165,7 +167,13 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 
 # Email settings
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.office365.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'noreply@yourcompany.com'
+EMAIL_HOST_PASSWORD = 'your_password'
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 ACCOUNT_EMAIL_VERIFICATION = 'none'  # Change from 'mandatory' to 'none'
 
 # AllAuth Settings
@@ -182,3 +190,5 @@ AZURE_AD_CLIENT_SECRET = 'your_client_secret'  # Replace with your Azure AD clie
 AZURE_AD_TENANT_ID = 'your_tenant_id'  # Replace with your Azure AD tenant ID
 
 CSRF_FAILURE_VIEW = 'empmanagement.views.csrf_failure_view'
+
+SOCIALACCOUNT_ADAPTER = 'employee.adapter.RestrictMicrosoftDomainAdapter'

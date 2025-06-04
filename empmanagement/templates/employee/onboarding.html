@@ -1,47 +1,102 @@
-{% extends 'base.html' %}
+{% extends 'employee/base.html' %}
 {% load static %}
 
-{% block title %}Onboarding - Employee Management System{% endblock %}
+{% block title %}Employee Onboarding{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <div class="row">
-        <div class="col-md-8 mx-auto">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">Welcome! Complete Your Onboarding</h4>
-                </div>
-                <div class="card-body">
-                    <div class="mb-4">
-                        <h5>Profile Completion: {{ profile_completion }}%</h5>
-                        <div class="progress">
-                            <div class="progress-bar" role="progressbar" style="width: {{ profile_completion }}%" 
-                                 aria-valuenow="{{ profile_completion }}" aria-valuemin="0" aria-valuemax="100">
-                            </div>
-                        </div>
-                    </div>
-                    <form method="POST" class="space-y-4 bg-white rounded-lg shadow p-6">
-                        {% csrf_token %}
-                        <div>
-                            <label for="id_firstName" class="block text-gray-700 font-medium mb-1">First Name</label>
-                            {{ form.firstName }}
-                        </div>
-                        <div>
-                            <label for="id_lastName" class="block text-gray-700 font-medium mb-1">Last Name</label>
-                            {{ form.lastName }}
-                        </div>
-                        <div>
-                            <label for="id_phoneNo" class="block text-gray-700 font-medium mb-1">Phone Number</label>
-                            {{ form.phoneNo }}
-                        </div>
-                        <div>
-                            <label for="id_email" class="block text-gray-700 font-medium mb-1">Email</label>
-                            {{ form.email }}
-                        </div>
-                        <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700 font-medium">Complete Onboarding</button>
-                    </form>
-                </div>
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-8">Employee Onboarding</h1>
+    
+    {% if user.is_staff %}
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-xl font-semibold mb-4">Add New Employee</h2>
+        <form method="post" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% csrf_token %}
+            <div>
+                <label for="firstName" class="block font-medium">First Name</label>
+                <input type="text" name="firstName" id="firstName" class="form-input mt-1 block w-full" required>
             </div>
+            <div>
+                <label for="middleName" class="block font-medium">Middle Name</label>
+                <input type="text" name="middleName" id="middleName" class="form-input mt-1 block w-full">
+            </div>
+            <div>
+                <label for="lastName" class="block font-medium">Last Name</label>
+                <input type="text" name="lastName" id="lastName" class="form-input mt-1 block w-full" required>
+            </div>
+            <div>
+                <label for="personal_email" class="block font-medium">Personal Email</label>
+                <input type="email" name="personal_email" id="personal_email" class="form-input mt-1 block w-full" required>
+            </div>
+            <div>
+                <label for="designation" class="block font-medium">Designation</label>
+                <select name="designation" id="designation" class="form-input mt-1 block w-full" required>
+                    <option value="">Select Designation</option>
+                    {% for value, label in designations_opt %}
+                        <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="salary" class="block font-medium">Salary</label>
+                <input type="text" name="salary" id="salary" class="form-input mt-1 block w-full" required>
+            </div>
+            <div>
+                <label for="joinDate" class="block font-medium">Join Date</label>
+                <input type="date" name="joinDate" id="joinDate" class="form-input mt-1 block w-full" required>
+            </div>
+            <div>
+                <label for="company_email" class="block font-medium">Company Email</label>
+                <input type="email" name="company_email" id="company_email" class="form-input mt-1 block w-full" required>
+            </div>
+            <div class="md:col-span-2">
+                <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded shadow hover:bg-blue-700">Create Employee</button>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold mb-4">Onboarding Status</h2>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Designation</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company Email</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for employee in employees %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ employee.eID }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ employee.firstName }} {{ employee.lastName }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ employee.designation }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ employee.email }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if employee.onboarding_completed %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Completed
+                            </span>
+                            {% else %}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                Pending
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            {% if not employee.onboarding_completed %}
+                            <a href="{% url 'complete_onboarding' employee.eID %}" class="text-blue-600 hover:text-blue-900">Complete Onboarding</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

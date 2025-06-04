@@ -46,39 +46,37 @@
 
 <div class="flex min-h-screen">
     <!-- Sidebar -->
-    <aside class="w-64 bg-blue-900 text-white flex flex-col h-screen">
-        <div class="p-4">
-            <h1 class="text-2xl font-bold">Dashboard</h1>
+    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col h-screen">
+        <div class="flex items-center h-16 px-6 border-b">
+            <img src="{% static 'images/logo.png' %}" alt="Company Logo" class="h-8 mr-2">
+            <span class="text-xl font-bold text-gray-800">EMS</span>
         </div>
-        <nav class="flex-1 py-6 overflow-y-auto">
+        <nav class="flex-1 px-4 py-6 space-y-2">
             <ul class="space-y-1">
                 {% if user.is_authenticated and user.userprofile.role == 'EMPLOYEE' %}
-                    <li><a href="{% url 'dashboard' %}" class="sidebar-link flex items-center px-6 py-3 hover:bg-blue-800 rounded transition group"><span class="material-icons mr-3 text-blue-200 group-hover:text-white">home</span> <span>Home</span></a></li>
-                    <li><a href="{% url 'profile' %}" class="sidebar-link flex items-center px-6 py-3 hover:bg-blue-800 rounded transition group"><span class="material-icons mr-3 text-blue-200 group-hover:text-white">person</span> <span>Profile</span></a></li>
-                    <li><a href="{% url 'my_documents' %}" class="sidebar-link flex items-center px-6 py-3 hover:bg-blue-800 rounded transition group"><span class="material-icons mr-3 text-blue-200 group-hover:text-white">description</span> <span>My Documents</span></a></li>
-                    <li><a href="{% url 'attendance_list' %}" class="sidebar-link flex items-center px-6 py-3 hover:bg-blue-800 rounded transition group"><span class="material-icons mr-3 text-blue-200 group-hover:text-white">event</span> <span>Attendance</span></a></li>
-                    <li><a href="{% url 'mywork' %}" class="sidebar-link flex items-center px-6 py-3 hover:bg-blue-800 rounded transition group"><span class="material-icons mr-3 text-blue-200 group-hover:text-white">assignment</span> <span>My Work</span></a></li>
-                    <li><a href="{% url 'leave_request_list' %}" class="sidebar-link flex items-center px-6 py-3 hover:bg-blue-800 rounded transition group"><span class="material-icons mr-3 text-blue-200 group-hover:text-white">event_busy</span> <span>Leave</span></a></li>
-                    <li><a href="{% url 'training_program_list' %}" class="sidebar-link flex items-center px-6 py-3 hover:bg-blue-800 rounded transition group"><span class="material-icons mr-3 text-blue-200 group-hover:text-white">school</span> <span>Training</span></a></li>
+                    <li><a href="{% url 'dashboard' %}" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-100 text-gray-700 font-medium"><span class="material-icons mr-3 text-blue-500">home</span>Home</a></li>
+                    <li><a href="{% url 'profile' %}" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-100 text-gray-700 font-medium"><span class="material-icons mr-3 text-blue-500">person</span>Profile</a></li>
+                    <li><a href="{% url 'my_documents' %}" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-100 text-gray-700 font-medium"><span class="material-icons mr-3 text-blue-500">description</span>My Documents</a></li>
+                    <li><a href="{% url 'attendance_list' %}" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-100 text-gray-700 font-medium"><span class="material-icons mr-3 text-blue-500">event</span>Attendance</a></li>
+                    <li><a href="{% url 'mywork' %}" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-100 text-gray-700 font-medium"><span class="material-icons mr-3 text-blue-500">assignment</span>My Work</a></li>
+                    <li><a href="{% url 'leave_request_list' %}" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-100 text-gray-700 font-medium"><span class="material-icons mr-3 text-blue-500">event_busy</span>Leave</a></li>
+                    <li><a href="{% url 'training_program_list' %}" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-100 text-gray-700 font-medium"><span class="material-icons mr-3 text-blue-500">school</span>Training</a></li>
                 {% endif %}
                 {% if user.is_authenticated and user.userprofile.role in 'ADMIN,HR' %}
-                    <li><a href="{% url 'admin_dashboard' %}" class="sidebar-link flex items-center px-6 py-3 hover:bg-blue-800 rounded transition group"><span class="material-icons mr-3 text-blue-200 group-hover:text-white">dashboard</span> <span>Admin Dashboard</span></a></li>
-                    <li><a href="{% url 'employee_list' %}" class="sidebar-link flex items-center px-6 py-3 hover:bg-blue-800 rounded transition group"><span class="material-icons mr-3 text-blue-200 group-hover:text-white">people</span> <span>Employees</span></a></li>
-                    <li><a href="{% url 'document_verification' %}" class="sidebar-link flex items-center px-6 py-3 hover:bg-blue-800 rounded transition group"><span class="material-icons mr-3 text-blue-200 group-hover:text-white">verified_user</span> <span>Document Verification</span></a></li>
-                    <li><a href="{% url 'company_profile' %}" class="sidebar-link flex items-center px-6 py-3 hover:bg-blue-800 rounded transition group"><span class="material-icons mr-3 text-blue-200 group-hover:text-white">business</span> <span>Company Info</span></a></li>
-                    <li><a href="{% url 'policies' %}" class="sidebar-link flex items-center px-6 py-3 hover:bg-blue-800 rounded transition group"><span class="material-icons mr-3 text-blue-200 group-hover:text-white">policy</span> <span>Policies</span></a></li>
-                    <li><a href="{% url 'notifications' %}" class="sidebar-link flex items-center px-6 py-3 hover:bg-blue-800 rounded transition group"><span class="material-icons mr-3 text-blue-200 group-hover:text-white">notifications</span> <span>Notifications</span></a></li>
-                    <li><a href="{% url 'attendance_list' %}" class="sidebar-link flex items-center px-6 py-3 hover:bg-blue-800 rounded transition group"><span class="material-icons mr-3 text-blue-200 group-hover:text-white">event</span> <span>Attendance</span></a></li>
-                    <li><a href="{% url 'project_list' 'ongoing' %}" class="sidebar-link flex items-center px-6 py-3 hover:bg-blue-800 rounded transition group"><span class="material-icons mr-3 text-blue-200 group-hover:text-white">autorenew</span> <span>Ongoing Projects</span></a></li>
+                    <li><a href="{% url 'admin_dashboard' %}" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-100 text-gray-700 font-medium"><span class="material-icons mr-3 text-blue-500">dashboard</span>Admin Dashboard</a></li>
+                    <li><a href="{% url 'employee_list' %}" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-100 text-gray-700 font-medium"><span class="material-icons mr-3 text-blue-500">people</span>Employees</a></li>
+                    <li><a href="{% url 'employee_onboarding' %}" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-100 text-gray-700 font-medium"><span class="material-icons mr-3 text-blue-500">person_add</span>Onboarding</a></li>
+                    <li><a href="{% url 'document_verification' %}" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-100 text-gray-700 font-medium"><span class="material-icons mr-3 text-blue-500">verified_user</span>Document Verification</a></li>
+                    <li><a href="{% url 'company_profile' %}" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-100 text-gray-700 font-medium"><span class="material-icons mr-3 text-blue-500">business</span>Company Info</a></li>
+                    <li><a href="{% url 'policies' %}" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-100 text-gray-700 font-medium"><span class="material-icons mr-3 text-blue-500">policy</span>Policies</a></li>
+                    <li><a href="{% url 'notifications' %}" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-100 text-gray-700 font-medium"><span class="material-icons mr-3 text-blue-500">notifications</span>Notifications</a></li>
+                    <li><a href="{% url 'attendance_list' %}" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-100 text-gray-700 font-medium"><span class="material-icons mr-3 text-blue-500">event</span>Attendance</a></li>
+                    <li><a href="{% url 'project_list' 'ongoing' %}" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-100 text-gray-700 font-medium"><span class="material-icons mr-3 text-blue-500">autorenew</span>Ongoing Projects</a></li>
                 {% endif %}
             </ul>
         </nav>
-        <!-- Logout Section -->
-        <div class="mt-auto border-t border-blue-800">
-            <a href="{% url 'logout' %}" class="sidebar-link flex items-center px-6 py-4 hover:bg-blue-800 transition group">
-                <span class="material-icons mr-3 text-blue-200 group-hover:text-white">logout</span>
-                <span>Logout</span>
-            </a>
+        <div class="mt-auto py-4 px-6 border-t">
+            <a href="{% url 'logout' %}" class="sidebar-link flex items-center px-4 py-2 rounded hover:bg-gray-100 text-gray-700 font-medium"><span class="material-icons mr-3 text-blue-500">logout</span>Logout</a>
         </div>
     </aside>
     <!-- Main Content -->

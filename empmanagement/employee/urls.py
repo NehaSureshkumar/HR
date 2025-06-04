@@ -25,7 +25,8 @@ urlpatterns = [
     # Employee Profile
     path('profile/', views.profile, name='profile'),
     path('profile/update/', views.update_profile, name='update_profile'),
-    path('onboarding/', views.onboarding, name='onboarding'),
+    path('onboarding/', views.employee_onboarding, name='employee_onboarding'),
+    path('onboarding/complete/<str:employee_id>/', views.complete_onboarding, name='complete_onboarding'),
     
     # Notices
     path('notices/', views.notice, name="notice"),
