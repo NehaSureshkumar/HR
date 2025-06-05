@@ -43,6 +43,10 @@ INSTALLED_APPS = [
     'django.contrib.sites',
     'employee',
     'accounts',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.microsoft',
 ]
 
 MIDDLEWARE = [
@@ -53,6 +57,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'empmanagement.urls'
@@ -144,6 +149,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
 SITE_ID = 1
@@ -156,12 +162,14 @@ DEFAULT_FROM_EMAIL = 'prashantj@appglide.io'
 MS_GRAPH_CLIENT_ID = config('MS_GRAPH_CLIENT_ID', default='80c4fa90-d8a2-4145-b49a-ae2dd1054be3')
 MS_GRAPH_TENANT_ID = config('MS_GRAPH_TENANT_ID', default='dcd98ff5-357f-450f-91dc-94ea4024b76c')
 MS_GRAPH_SENDER_EMAIL = config('MS_GRAPH_SENDER_EMAIL', default='prashantj@appglide.io')
+MS_GRAPH_CLIENT_SECRET = config('MS_GRAPH_CLIENT_SECRET', default='KaX8Q~VhPSDm7WB9nQIzrgQg.oFf-czitDloadx2')
 
 # Add debug logging for settings
 if DEBUG:
     print(f"Email settings loaded - Sender: {MS_GRAPH_SENDER_EMAIL}")
     print(f"Client ID configured: {'Yes' if MS_GRAPH_CLIENT_ID else 'No'}")
-    print(f"Using interactive login for Mail.Send")
+    print(f"Client Secret configured: {'Yes' if MS_GRAPH_CLIENT_SECRET else 'No'}")
+    print(f"Using client credentials flow for Mail.Send")
 
 # Login/Logout URLs
 LOGIN_REDIRECT_URL = '/ems/dashboard/'
@@ -173,7 +181,10 @@ CSRF_FAILURE_VIEW = 'empmanagement.views.csrf_failure_view'
 # CSRF Settings
 CSRF_COOKIE_SECURE = False  # Set to True in production with HTTPS
 CSRF_COOKIE_HTTPONLY = False
-CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1:8000', 'http://localhost:8000']
+CSRF_TRUSTED_ORIGINS = [
+    'http://127.0.0.1:8000',
+    'http://localhost:8000'
+]
 
 # Session Settings
 SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
@@ -212,4 +223,25 @@ LOGGING = {
             'propagate': True,
         },
     },
+}
+
+# AllAuth Configuration
+ACCOUNT_LOGIN_METHODS = {'username', 'email'}
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
+ACCOUNT_EMAIL_VERIFICATION = 'none'
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
+ACCOUNT_LOGOUT_ON_GET = True
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 1
+
+# Microsoft SSO Settings
+SOCIALACCOUNT_PROVIDERS = {
+    'microsoft': {
+        'TENANT': 'dcd98ff5-357f-450f-91dc-94ea4024b76c',
+        'SCOPE': ['User.Read'],
+        'AUTH_PARAMS': {'prompt': 'select_account'},
+        'METHOD': 'oauth2',
+        'VERIFIED_EMAIL': True,
+        'CALLBACK_URL': 'http://127.0.0.1:8000/accounts/microsoft/login/callback/'
+    }
 }

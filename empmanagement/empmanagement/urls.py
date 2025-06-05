@@ -29,6 +29,7 @@ urlpatterns = [
     # Application URLs
     path('ems/', include('employee.urls')),
     path('ems/accounts/', include('accounts.urls')),
+    path('accounts/', include('allauth.urls')),
 ]
 
 # Add static and media URLs in development

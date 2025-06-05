@@ -1,5 +1,6 @@
 {% extends 'accounts/auth_base.html' %}
 {% load static %}
+{% load socialaccount %}
 
 {% block title %}Login - Employee Management System{% endblock %}
 
@@ -60,6 +61,14 @@
                         Forgot your password?
                     </a>
                 </div>
+            </div>
+
+            <div class="mt-4 text-center">
+                <p class="text-muted">Or login with</p>
+                <a href="{% provider_login_url 'microsoft' %}" class="btn btn-outline-primary">
+                    <img src="{% static 'img/microsoft-logo.png' %}" alt="Microsoft" height="24" class="me-2">
+                    Sign in with Microsoft
+                </a>
             </div>
         </div>
     </div>

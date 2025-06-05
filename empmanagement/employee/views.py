@@ -761,7 +761,7 @@ HR Team'''
                 
                 messages.success(request, f'Employee created successfully with ID: {employee_id}. Welcome email sent with login credentials.')
             except Exception as email_error:
-                print(f"Email sending failed: {str(email_error)}")
+                logger.error(f"Email sending failed: {str(email_error)}", exc_info=True)
                 messages.warning(request, f'''Employee created successfully with ID: {employee_id}.
                 However, welcome email could not be sent. Please provide these credentials manually:
                 Username: {employee_id}
