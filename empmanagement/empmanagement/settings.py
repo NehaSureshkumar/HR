@@ -154,15 +154,14 @@ DEFAULT_FROM_EMAIL = 'prashantj@appglide.io'
 
 # Microsoft Graph API Settings
 MS_GRAPH_CLIENT_ID = config('MS_GRAPH_CLIENT_ID', default='80c4fa90-d8a2-4145-b49a-ae2dd1054be3')
-MS_GRAPH_CLIENT_SECRET = config('MS_GRAPH_CLIENT_SECRET', default='9tc8Q~v8j5CD62BIEnWy3HQ0ohx3AC5bME5v~cZr')
 MS_GRAPH_TENANT_ID = config('MS_GRAPH_TENANT_ID', default='dcd98ff5-357f-450f-91dc-94ea4024b76c')
-MS_GRAPH_USER_EMAIL = config('MS_GRAPH_USER_EMAIL', default='prashantj@appglide.io')
-MS_GRAPH_USER_PASSWORD = config('MS_GRAPH_USER_PASSWORD')  # No default for security
+MS_GRAPH_SENDER_EMAIL = config('MS_GRAPH_SENDER_EMAIL', default='prashantj@appglide.io')
 
 # Add debug logging for settings
 if DEBUG:
-    print(f"Email settings loaded - User: {MS_GRAPH_USER_EMAIL}")
-    print(f"Password configured: {'Yes' if MS_GRAPH_USER_PASSWORD else 'No'}")
+    print(f"Email settings loaded - Sender: {MS_GRAPH_SENDER_EMAIL}")
+    print(f"Client ID configured: {'Yes' if MS_GRAPH_CLIENT_ID else 'No'}")
+    print(f"Using interactive login for Mail.Send")
 
 # Login/Logout URLs
 LOGIN_REDIRECT_URL = '/ems/dashboard/'
