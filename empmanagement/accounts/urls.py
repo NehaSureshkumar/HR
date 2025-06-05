@@ -9,9 +9,6 @@ urlpatterns = [
     path('logout/', views.logout_user, name='logout'),
     path('signup/', views.signup, name='signup'),
     
-    # Microsoft SSO
-    path('microsoft/login/', views.handle_microsoft_login, name='microsoft_login'),
-    
     # Profile
     path('profile/completion/', views.profile_completion, name='profile_completion'),
 ]   

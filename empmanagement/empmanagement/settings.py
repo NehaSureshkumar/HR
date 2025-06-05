@@ -40,11 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.sites',  # Required for allauth
-    'allauth',
-    'allauth.account',
-    'allauth.socialaccount',
-    'allauth.socialaccount.providers.microsoft',
+    'django.contrib.sites',
     'employee',
     'accounts',
 ]
@@ -57,7 +53,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'allauth.account.middleware.AccountMiddleware',  # Required for django-allauth
 ]
 
 ROOT_URLCONF = 'empmanagement.urls'
@@ -145,50 +140,77 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 
 # Default primary key field type
-# https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
-    'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
 SITE_ID = 1
 
-# Microsoft SSO Configuration
-SOCIALACCOUNT_PROVIDERS = {
-    'microsoft': {
-        'TENANT': 'common',
-        'SCOPE': ['User.Read'],
-        'AUTH_PARAMS': {'prompt': 'select_account'},
-        'METHOD': 'oauth2',
-    }
-}
+# Email Configuration
+EMAIL_BACKEND = 'employee.ms_graph_backend.MSGraphEmailBackend'
+DEFAULT_FROM_EMAIL = 'prashantj@appglide.io'
 
-# Email settings
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.office365.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'noreply@yourcompany.com'
-EMAIL_HOST_PASSWORD = 'your_password'
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-ACCOUNT_EMAIL_VERIFICATION = 'none'  # Change from 'mandatory' to 'none'
+# Microsoft Graph API Settings
+MS_GRAPH_CLIENT_ID = config('MS_GRAPH_CLIENT_ID', default='80c4fa90-d8a2-4145-b49a-ae2dd1054be3')
+MS_GRAPH_CLIENT_SECRET = config('MS_GRAPH_CLIENT_SECRET', default='9tc8Q~v8j5CD62BIEnWy3HQ0ohx3AC5bME5v~cZr')
+MS_GRAPH_TENANT_ID = config('MS_GRAPH_TENANT_ID', default='dcd98ff5-357f-450f-91dc-94ea4024b76c')
+MS_GRAPH_USER_EMAIL = config('MS_GRAPH_USER_EMAIL', default='prashantj@appglide.io')
+MS_GRAPH_USER_PASSWORD = config('MS_GRAPH_USER_PASSWORD')  # No default for security
 
-# AllAuth Settings
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_USERNAME_REQUIRED = True
-ACCOUNT_AUTHENTICATION_METHOD = 'username_email'
+# Add debug logging for settings
+if DEBUG:
+    print(f"Email settings loaded - User: {MS_GRAPH_USER_EMAIL}")
+    print(f"Password configured: {'Yes' if MS_GRAPH_USER_PASSWORD else 'No'}")
+
+# Login/Logout URLs
 LOGIN_REDIRECT_URL = '/ems/dashboard/'
 LOGOUT_REDIRECT_URL = '/ems/accounts/login/'
 LOGIN_URL = '/ems/accounts/login/'
 
-# Microsoft Azure AD Configuration
-AZURE_AD_CLIENT_ID = 'your_client_id'  # Replace with your Azure AD client ID
-AZURE_AD_CLIENT_SECRET = 'your_client_secret'  # Replace with your Azure AD client secret
-AZURE_AD_TENANT_ID = 'your_tenant_id'  # Replace with your Azure AD tenant ID
-
 CSRF_FAILURE_VIEW = 'empmanagement.views.csrf_failure_view'
 
-SOCIALACCOUNT_ADAPTER = 'employee.adapter.RestrictMicrosoftDomainAdapter'
+# CSRF Settings
+CSRF_COOKIE_SECURE = False  # Set to True in production with HTTPS
+CSRF_COOKIE_HTTPONLY = False
+CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1:8000', 'http://localhost:8000']
+
+# Session Settings
+SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
+SESSION_COOKIE_HTTPONLY = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+# Security Settings
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# Logging Configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': 'debug.log',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'employee.ms_graph_backend': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}

@@ -27,6 +27,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 import random
 import string
+import logging
 
 def role_required(roles):
     def decorator(view_func):
@@ -657,42 +658,162 @@ def manage_job_openings(request):
     return render(request, 'employee/manage_jobs.html', context)
 
 @login_required(login_url='/ems/accounts/login/')
-def onboarding(request):
-    try:
-        user_profile = UserProfile.objects.get(user=request.user)
-        employee = Employee.objects.get(eID=request.user.username)
-        
-        from django import forms
-        class SimpleOnboardingForm(forms.ModelForm):
-            class Meta:
-                model = employee.__class__
-                fields = ['firstName', 'lastName', 'phoneNo', 'email']
-                widgets = {
-                    'firstName': forms.TextInput(attrs={'class': 'form-control'}),
-                    'lastName': forms.TextInput(attrs={'class': 'form-control'}),
-                    'phoneNo': forms.TextInput(attrs={'class': 'form-control'}),
-                    'email': forms.EmailInput(attrs={'class': 'form-control'}),
-                }
-        if request.method == 'POST':
-            form = SimpleOnboardingForm(request.POST, instance=employee)
-            if form.is_valid():
-                form.save()
-                user_profile.profile_completion = 100
-                user_profile.save()
-                messages.success(request, "Onboarding complete! Welcome.")
-                return redirect('dashboard')
-        else:
-            form = SimpleOnboardingForm(instance=employee)
-        context = {
-            'form': form,
-            'profile_completion': user_profile.profile_completion
-        }
-        return render(request, "employee/onboarding.html", context)
-    except (UserProfile.DoesNotExist, Employee.DoesNotExist):
-        messages.error(request, "User profile or employee record not found.")
-        return redirect('login')
+def employee_onboarding(request):
+    if request.method == 'POST' and request.user.is_staff:
+        try:
+            import uuid
+            from datetime import datetime
+            
+            # Auto-generate Employee ID
+            def generate_employee_id():
+                return 'EMP' + uuid.uuid4().hex[:8].upper()
+            employee_id = generate_employee_id()
 
-@login_required(login_url='/')
+            # Get form data
+            first_name = request.POST['firstName']
+            middle_name = request.POST.get('middleName', '')
+            last_name = request.POST['lastName']
+            email = request.POST['email']
+            join_date_str = request.POST['joinDate']
+            designation = request.POST['designation']
+
+            # Convert join_date string to datetime object
+            try:
+                # First try the HTML5 date format (YYYY-MM-DD)
+                join_date = datetime.strptime(join_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                try:
+                    # Then try the display format (DD-MM-YYYY)
+                    join_date = datetime.strptime(join_date_str, '%d-%m-%Y').date()
+                except ValueError:
+                    messages.error(request, 'Invalid date format. Please use YYYY-MM-DD format.')
+                    return redirect('employee_onboarding')
+
+            # Generate a temporary Aadhar number that's unique
+            temp_aadhar = f'TEMP_{employee_id}'
+
+            # Create new employee with minimal required fields
+            employee = Employee.objects.create(
+                eID=employee_id,
+                firstName=first_name,
+                middleName=middle_name,
+                lastName=last_name,
+                email=email,
+                joinDate=join_date,
+                designation=designation,
+                phoneNo='pending',
+                dOB=timezone.now().date(),
+                salary='0',
+                addharNo=temp_aadhar  # Using the unique temporary Aadhar number
+            )
+
+            # Create User account for the employee
+            try:
+                # Generate a random password
+                temp_password = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
+                user = User.objects.create_user(
+                    username=employee_id,
+                    email=email,
+                    password=temp_password,
+                    first_name=first_name,
+                    last_name=last_name
+                )
+                UserProfile.objects.create(
+                    user=user,
+                    role='EMPLOYEE',
+                    profile_completion=0
+                )
+            except Exception as user_error:
+                employee.delete()  # Rollback employee creation if user creation fails
+                raise Exception(f"Failed to create user account: {str(user_error)}")
+
+            # Prepare email content with formatted date
+            email_subject = 'Welcome to Our Company!'
+            email_message = f'''Dear {employee.firstName},
+
+Welcome to our company! Your account has been created successfully.
+
+Your Employee Details:
+- Employee ID: {employee.eID}
+- Join Date: {join_date.strftime('%d-%m-%Y')}
+- Designation: {employee.designation}
+
+Your Login Credentials:
+- Username: {employee.eID}
+- Temporary Password: {temp_password}
+
+Please login at http://localhost:8000/ems/accounts/login/ and change your password.
+
+Best regards,
+HR Team'''
+
+            try:
+                # Send welcome email
+                from django.core.mail import EmailMessage
+                email = EmailMessage(
+                    email_subject,
+                    email_message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [employee.email],
+                )
+                email.fail_silently = False
+                email.send(fail_silently=False)
+                
+                messages.success(request, f'Employee created successfully with ID: {employee_id}. Welcome email sent with login credentials.')
+            except Exception as email_error:
+                print(f"Email sending failed: {str(email_error)}")
+                messages.warning(request, f'''Employee created successfully with ID: {employee_id}.
+                However, welcome email could not be sent. Please provide these credentials manually:
+                Username: {employee_id}
+                Temporary Password: {temp_password}''')
+
+            return redirect('employee_onboarding')
+        except Exception as e:
+            print(f"Employee creation failed with error: {str(e)}")
+            messages.error(request, f'Error creating employee: {str(e)}')
+    employees = Employee.objects.all().order_by('-joinDate')
+    return render(request, 'employee/onboarding.html', {
+        'employees': employees,
+        'designations_opt': designations_opt
+    })
+
+@login_required
+def complete_onboarding(request, employee_id):
+    if not request.user.is_staff:
+        messages.error(request, 'You do not have permission to perform this action.')
+        return redirect('dashboard')
+    
+    try:
+        employee = Employee.objects.get(eID=employee_id)
+        employee.onboarding_completed = True
+        employee.onboarding_date = timezone.now()
+        employee.save()
+        
+        # Send completion email
+        send_mail(
+            'Onboarding Completed',
+            f'''Dear {employee.firstName},
+
+Your onboarding process has been completed successfully.
+
+You can now access all company resources using your company email: {employee.email}
+
+Best regards,
+HR Team''',
+            settings.DEFAULT_FROM_EMAIL,
+            [employee.personal_email],
+            fail_silently=False,
+        )
+        
+        messages.success(request, 'Onboarding completed successfully.')
+    except Employee.DoesNotExist:
+        messages.error(request, 'Employee not found.')
+    except Exception as e:
+        messages.error(request, f'Error completing onboarding: {str(e)}')
+    
+    return redirect('employee_onboarding')
+
+@login_required
 def update_profile(request):
     if request.method == "POST":
         user_profile = get_object_or_404(UserProfile, user=request.user)
@@ -1784,91 +1905,3 @@ def generate_company_email(first_name, last_name):
     # Generate a random string to ensure uniqueness
     random_str = ''.join(random.choices(string.ascii_lowercase + string.digits, k=4))
     return f"{first_name.lower()}.{last_name.lower()}.{random_str}@company.com"
-
-@login_required
-def employee_onboarding(request):
-    if request.method == 'POST' and request.user.is_staff:
-        try:
-            import uuid
-            # Auto-generate Employee ID
-            def generate_employee_id():
-                return 'EMP' + uuid.uuid4().hex[:8].upper()
-            employee_id = generate_employee_id()
-
-            # Get form data
-            first_name = request.POST['firstName']
-            middle_name = request.POST.get('middleName', '')
-            last_name = request.POST['lastName']
-            personal_email = request.POST['personal_email']
-            designation = request.POST['designation']
-            salary = request.POST['salary']
-            join_date = request.POST['joinDate']
-            company_email = request.POST['company_email']
-
-            # Create new employee
-            employee = Employee.objects.create(
-                eID=employee_id,
-                firstName=first_name,
-                middleName=middle_name,
-                lastName=last_name,
-                email=company_email,
-                personal_email=personal_email,
-                designation=designation,
-                salary=salary,
-                joinDate=join_date
-            )
-
-            # Send welcome email to company email
-            send_mail(
-                'Welcome to Our Company!',
-                f'''Dear {employee.firstName},\n\nWelcome to our company! Your onboarding process has been initiated.\n\nYour company email address is: {employee.email}\n\nPlease check your company email for further instructions and to set up your account.\n\nBest regards,\nHR Team''',
-                settings.DEFAULT_FROM_EMAIL,
-                [employee.email],
-                fail_silently=False,
-            )
-
-            messages.success(request, 'Employee created successfully and welcome email sent to company email.')
-            return redirect('employee_onboarding')
-        except Exception as e:
-            messages.error(request, f'Error creating employee: {str(e)}')
-    employees = Employee.objects.all().order_by('-joinDate')
-    return render(request, 'employee/onboarding.html', {
-        'employees': employees,
-        'designations_opt': designations_opt
-    })
-
-@login_required
-def complete_onboarding(request, employee_id):
-    if not request.user.is_staff:
-        messages.error(request, 'You do not have permission to perform this action.')
-        return redirect('dashboard')
-    
-    try:
-        employee = Employee.objects.get(eID=employee_id)
-        employee.onboarding_completed = True
-        employee.onboarding_date = timezone.now()
-        employee.save()
-        
-        # Send completion email
-        send_mail(
-            'Onboarding Completed',
-            f'''Dear {employee.firstName},
-
-Your onboarding process has been completed successfully.
-
-You can now access all company resources using your company email: {employee.email}
-
-Best regards,
-HR Team''',
-            settings.DEFAULT_FROM_EMAIL,
-            [employee.personal_email],
-            fail_silently=False,
-        )
-        
-        messages.success(request, 'Onboarding completed successfully.')
-    except Employee.DoesNotExist:
-        messages.error(request, 'Employee not found.')
-    except Exception as e:
-        messages.error(request, f'Error completing onboarding: {str(e)}')
-    
-    return redirect('employee_onboarding')

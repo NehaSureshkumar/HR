@@ -29,7 +29,6 @@ urlpatterns = [
     # Application URLs
     path('ems/', include('employee.urls')),
     path('ems/accounts/', include('accounts.urls')),
-    path('accounts/', include('allauth.urls')),
 ]
 
 # Add static and media URLs in development
@@ -41,4 +40,3 @@ LOGIN_URL = '/ems/accounts/login/'
 LOGIN_REDIRECT_URL = '/ems/dashboard/'
 LOGOUT_REDIRECT_URL = '/ems/accounts/login/'
 ACCOUNT_EMAIL_VERIFICATION = 'none'
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

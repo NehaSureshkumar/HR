@@ -25,8 +25,12 @@
                 <input type="text" name="lastName" id="lastName" class="form-input mt-1 block w-full" required>
             </div>
             <div>
-                <label for="personal_email" class="block font-medium">Personal Email</label>
-                <input type="email" name="personal_email" id="personal_email" class="form-input mt-1 block w-full" required>
+                <label for="email" class="block font-medium">Email ID</label>
+                <input type="email" name="email" id="email" class="form-input mt-1 block w-full" required>
+            </div>
+            <div>
+                <label for="joinDate" class="block font-medium">Joining Date</label>
+                <input type="date" name="joinDate" id="joinDate" class="form-input mt-1 block w-full" required>
             </div>
             <div>
                 <label for="designation" class="block font-medium">Designation</label>
@@ -36,18 +40,6 @@
                         <option value="{{ value }}">{{ label }}</option>
                     {% endfor %}
                 </select>
-            </div>
-            <div>
-                <label for="salary" class="block font-medium">Salary</label>
-                <input type="text" name="salary" id="salary" class="form-input mt-1 block w-full" required>
-            </div>
-            <div>
-                <label for="joinDate" class="block font-medium">Join Date</label>
-                <input type="date" name="joinDate" id="joinDate" class="form-input mt-1 block w-full" required>
-            </div>
-            <div>
-                <label for="company_email" class="block font-medium">Company Email</label>
-                <input type="email" name="company_email" id="company_email" class="form-input mt-1 block w-full" required>
             </div>
             <div class="md:col-span-2">
                 <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded shadow hover:bg-blue-700">Create Employee</button>
@@ -65,7 +57,8 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee ID</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Designation</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company Email</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Join Date</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
@@ -77,6 +70,7 @@
                         <td class="px-6 py-4 whitespace-nowrap">{{ employee.firstName }} {{ employee.lastName }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">{{ employee.designation }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">{{ employee.email }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">{{ employee.joinDate|date:"d-m-Y" }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             {% if employee.onboarding_completed %}
                             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">

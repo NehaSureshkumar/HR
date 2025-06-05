@@ -4,7 +4,6 @@ from django.contrib import messages
 from django.contrib.auth.models import User
 from employee.models import UserProfile, Employee
 from django.contrib.auth.decorators import login_required
-from allauth.socialaccount.models import SocialAccount
 from django.utils import timezone
 
 def login_user(request):
@@ -80,41 +79,6 @@ def signup(request):
         return redirect('login_user')
     
     return render(request, 'accounts/signup.html')
-
-def handle_microsoft_login(request):
-    if request.user.is_authenticated:
-        # Get or create employee profile
-        employee, created = Employee.objects.get_or_create(
-            eID=request.user.username,
-            defaults={
-                'firstName': request.user.first_name or 'New',
-                'middleName': '',
-                'lastName': request.user.last_name or 'Employee',
-                'phoneNo': f'temp_{request.user.username}',
-                'email': request.user.email or f'{request.user.username}@temp.com',
-                'addharNo': f'temp_{request.user.username}',
-                'dOB': timezone.now().date(),
-                'designation': 'Intern',
-                'salary': '0',
-                'joinDate': timezone.now().date()
-            }
-        )
-        
-        # Get or create user profile
-        user_profile, created = UserProfile.objects.get_or_create(
-            user=request.user,
-            defaults={
-                'role': 'EMPLOYEE',
-                'profile_completion': 0
-            }
-        )
-        
-        # If profile is not complete, redirect to onboarding
-        if user_profile.profile_completion < 100:
-            return redirect('onboarding')
-            
-        return redirect('dashboard')
-    return redirect('account_login')
 
 @login_required
 def profile_completion(request):

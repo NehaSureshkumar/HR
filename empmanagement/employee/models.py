@@ -129,15 +129,15 @@ ENDORSEMENT_TYPE_CHOICES = (
 class Employee(models.Model):
     eID = models.CharField(primary_key=True,max_length=20)
     firstName = models.CharField(max_length=50)
-    middleName = models.CharField(max_length=50)
+    middleName = models.CharField(max_length=50, blank=True)
     lastName = models.CharField(max_length=50)
-    phoneNo = models.CharField(max_length=12,unique=True)
-    email = models.EmailField(max_length=70,unique=True)  # This will be the company email
-    personal_email = models.EmailField(max_length=70,unique=True, null=True, blank=True)  # Personal email field
-    addharNo = models.CharField(max_length=20,unique=True)
-    dOB = models.DateField()
+    phoneNo = models.CharField(max_length=12, unique=True, null=True, blank=True)  # Made optional
+    email = models.EmailField(max_length=70, unique=True)  # This will be the company email
+    personal_email = models.EmailField(max_length=70, unique=True, null=True, blank=True)  # Personal email field
+    addharNo = models.CharField(max_length=20, unique=True, null=True, blank=True)  # Made optional
+    dOB = models.DateField(null=True, blank=True)  # Made optional
     designation = models.CharField(max_length=50,choices=designations_opt)
-    salary = models.CharField(max_length=20)
+    salary = models.CharField(max_length=20, default='0')
     joinDate = models.DateField()
     onboarding_completed = models.BooleanField(default=False)
     onboarding_date = models.DateField(null=True, blank=True)
