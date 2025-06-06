@@ -9,11 +9,11 @@ from django.utils import timezone
 
 class MSGraphService:
     def __init__(self):
-        self.client_id = settings.AZURE_AD_CLIENT_ID
-        self.client_secret = settings.AZURE_AD_CLIENT_SECRET
-        self.tenant_id = settings.AZURE_AD_TENANT_ID
+        self.client_id = settings.MS_GRAPH_CLIENT_ID
+        self.client_secret = settings.MS_GRAPH_CLIENT_SECRET
+        self.tenant_id = settings.MS_GRAPH_TENANT_ID
         self.authority = f"https://login.microsoftonline.com/{self.tenant_id}"
-        self.scope = ['https://graph.microsoft.com/.default']
+        self.scope = ['User.Read']
         
         self.app = ConfidentialClientApplication(
             client_id=self.client_id,
@@ -75,21 +75,8 @@ class MSUserService:
         profile = MSUserProfile.objects.create(
             user=user,
             ms_id=ms_id,
-            status='pending'
+            status='active'  # Set to active by default for SSO
         )
-        
-        # Create verification request
-        VerificationRequest.objects.create(user_profile=profile)
-        
-        # Send email to HR
-        send_mail(
-            'New User Verification Required',
-            f'A new user {user.email} requires verification.',
-            settings.EMAIL_HOST_USER,
-            [settings.HR_EMAIL],
-            fail_silently=False,
-        )
-        
         return profile
 
     @staticmethod
@@ -122,17 +109,5 @@ class MSUserService:
     @staticmethod
     def deactivate_user(profile):
         """Deactivate a user's MS ID"""
-        ms_service = MSGraphService()
-        ms_service.deactivate_ms_account(profile.ms_id)
         profile.mark_as_deactivated()
-        
-        # Send email to user
-        send_mail(
-            'Account Deactivated',
-            'Your account has been deactivated.',
-            settings.EMAIL_HOST_USER,
-            [profile.user.email],
-            fail_silently=False,
-        )
-        
         return profile 

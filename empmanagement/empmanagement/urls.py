@@ -18,6 +18,13 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import RedirectView
+from django.http import HttpResponseRedirect
+
+def force_localhost(request):
+    """Force redirect to localhost if using 127.0.0.1"""
+    if request.get_host().startswith('127.0.0.1'):
+        return HttpResponseRedirect(request.build_absolute_uri().replace('127.0.0.1', 'localhost'))
+    return None
 
 urlpatterns = [
     # Root URL redirect
@@ -37,7 +44,8 @@ if settings.DEBUG:
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
-LOGIN_URL = '/ems/accounts/login/'
-LOGIN_REDIRECT_URL = '/ems/dashboard/'
-LOGOUT_REDIRECT_URL = '/ems/accounts/login/'
-ACCOUNT_EMAIL_VERIFICATION = 'none'
+# These are now handled in settings.py
+# LOGIN_URL = '/ems/accounts/login/'
+# LOGIN_REDIRECT_URL = '/ems/dashboard/'
+# LOGOUT_REDIRECT_URL = '/ems/accounts/login/'
+# ACCOUNT_EMAIL_VERIFICATION = 'none'

@@ -4,51 +4,8 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib import messages
 from django.http import HttpResponseForbidden
 from allauth.socialaccount.models import SocialApp
-from .models import MSUserProfile, VerificationRequest
-from .services import MSGraphService, MSUserService
-
-@staff_member_required
-def initiate_onboarding(request):
-    """HR initiates onboarding for a new employee"""
-    if request.method == 'POST':
-        email = request.POST.get('email')
-        display_name = request.POST.get('display_name')
-        
-        try:
-            # Create MS account
-            ms_service = MSGraphService()
-            ms_account = ms_service.create_ms_account(email, display_name)
-            
-            # Create user profile
-            user = request.user  # This should be the new user created in your system
-            profile = MSUserService.create_user_profile(user, ms_account['id'])
-            
-            messages.success(request, 'MS ID created successfully. Verification email sent to HR.')
-            return redirect('admin:ms_id_management_msuserprofile_changelist')
-            
-        except Exception as e:
-            messages.error(request, f'Error creating MS ID: {str(e)}')
-            return redirect('initiate_onboarding')
-            
-    return render(request, 'ms_id_management/initiate_onboarding.html')
-
-@login_required
-def verify_user(request, profile_id):
-    """HR verifies a new user"""
-    if not request.user.is_staff:
-        return HttpResponseForbidden()
-        
-    profile = MSUserProfile.objects.get(id=profile_id)
-    if profile.status != 'pending':
-        messages.error(request, 'User is not in pending status')
-        return redirect('admin:ms_id_management_msuserprofile_changelist')
-        
-    try:
-        MSUserService.verify_user(profile, request.user)
-        messages.success(request, 'User verified successfully')
-    except Exception as e:
-        messages.error(request, f'Error verifying user: {str(e)}')
-        return redirect('admin:ms_id_management_msuserprofile_changelist')
+from .models import MSUserProfile
+from .services import MSUserService
 
 @staff_member_required
 def deactivate_user(request, profile_id):

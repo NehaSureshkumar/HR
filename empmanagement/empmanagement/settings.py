@@ -27,7 +27,7 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-unsafe-key')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='', cast=Csv())
+ALLOWED_HOSTS = ['localhost']
 
 
 # Application definition
@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'django.contrib.sites',
     'employee',
     'accounts',
+    'ms_id_management',
     'allauth',
     'allauth.account',
     'allauth.socialaccount',
@@ -58,6 +59,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
+    'ms_id_management.middleware.ForceLocalhostMiddleware',
 ]
 
 ROOT_URLCONF = 'empmanagement.urls'
@@ -155,21 +157,18 @@ AUTHENTICATION_BACKENDS = [
 SITE_ID = 1
 
 # Email Configuration
-EMAIL_BACKEND = 'employee.ms_graph_backend.MSGraphEmailBackend'
-DEFAULT_FROM_EMAIL = 'prashantj@appglide.io'
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@example.com'
 
 # Microsoft Graph API Settings
-MS_GRAPH_CLIENT_ID = config('MS_GRAPH_CLIENT_ID', default='80c4fa90-d8a2-4145-b49a-ae2dd1054be3')
+MS_GRAPH_CLIENT_ID = config('MS_GRAPH_CLIENT_ID', default='4b4a2fc8-31b1-4df1-a06d-49dab8795c3b')
 MS_GRAPH_TENANT_ID = config('MS_GRAPH_TENANT_ID', default='dcd98ff5-357f-450f-91dc-94ea4024b76c')
-MS_GRAPH_SENDER_EMAIL = config('MS_GRAPH_SENDER_EMAIL', default='prashantj@appglide.io')
-MS_GRAPH_CLIENT_SECRET = config('MS_GRAPH_CLIENT_SECRET', default='KaX8Q~VhPSDm7WB9nQIzrgQg.oFf-czitDloadx2')
+MS_GRAPH_CLIENT_SECRET = config('MS_GRAPH_CLIENT_SECRET', default='PTf8Q~hN2DiZU3KzPqn4Zs9UOqijrqNqGAujkcEO')
 
 # Add debug logging for settings
 if DEBUG:
-    print(f"Email settings loaded - Sender: {MS_GRAPH_SENDER_EMAIL}")
     print(f"Client ID configured: {'Yes' if MS_GRAPH_CLIENT_ID else 'No'}")
     print(f"Client Secret configured: {'Yes' if MS_GRAPH_CLIENT_SECRET else 'No'}")
-    print(f"Using client credentials flow for Mail.Send")
 
 # Login/Logout URLs
 LOGIN_REDIRECT_URL = '/ems/dashboard/'
@@ -179,15 +178,12 @@ LOGIN_URL = '/ems/accounts/login/'
 CSRF_FAILURE_VIEW = 'empmanagement.views.csrf_failure_view'
 
 # CSRF Settings
-CSRF_COOKIE_SECURE = False  # Set to True in production with HTTPS
+CSRF_COOKIE_SECURE = False
 CSRF_COOKIE_HTTPONLY = False
-CSRF_TRUSTED_ORIGINS = [
-    'http://127.0.0.1:8000',
-    'http://localhost:8000'
-]
+CSRF_TRUSTED_ORIGINS = ['http://localhost:8000']
 
 # Session Settings
-SESSION_COOKIE_SECURE = False  # Set to True in production with HTTPS
+SESSION_COOKIE_SECURE = False
 SESSION_COOKIE_HTTPONLY = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
@@ -233,6 +229,14 @@ ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_LOGOUT_ON_GET = True
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 1
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = 'http'
+
+# Social Account Adapter
+SOCIALACCOUNT_ADAPTER = 'employee.adapter.RestrictMicrosoftDomainAdapter'
+SOCIALACCOUNT_AUTO_SIGNUP = True
+SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'
+SOCIALACCOUNT_EMAIL_REQUIRED = True
+SOCIALACCOUNT_QUERY_EMAIL = True
 
 # Microsoft SSO Settings
 SOCIALACCOUNT_PROVIDERS = {
@@ -242,6 +246,13 @@ SOCIALACCOUNT_PROVIDERS = {
         'AUTH_PARAMS': {'prompt': 'select_account'},
         'METHOD': 'oauth2',
         'VERIFIED_EMAIL': True,
-        'CALLBACK_URL': 'http://127.0.0.1:8000/accounts/microsoft/login/callback/'
+        'CALLBACK_URL': 'http://localhost:8000/accounts/microsoft/login/callback/'
     }
 }
+
+# Force localhost usage
+USE_X_FORWARDED_HOST = True
+FORCE_SCRIPT_NAME = None
+
+# Site Configuration
+SITE_DOMAIN = 'localhost:8000'
