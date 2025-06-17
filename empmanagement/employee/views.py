@@ -1150,74 +1150,80 @@ def attendance_list(request):
 @login_required
 @staff_member_required
 def admin_attendance(request):
-    """View for HR to manage attendance"""
-    try:
-        # Get current month's attendance records
-        today = timezone.now().date()
-        start_date = today.replace(day=1)
-        if today.month == 12:
-            end_date = today.replace(year=today.year + 1, month=1, day=1) - timezone.timedelta(days=1)
-        else:
-            end_date = today.replace(month=today.month + 1, day=1) - timezone.timedelta(days=1)
-            
-        attendance_records = Attendance.objects.filter(
-            date__range=[start_date, end_date]
-        ).select_related('shift', 'adjusted_by').order_by('-date', '-time_in')
+    if request.method == 'POST':
+        action = request.POST.get('action')
         
-        # Get all employees and shifts for the form
-        employees = Employee.objects.all().order_by('firstName', 'lastName')
-        shifts = Shift.objects.all().order_by('name')
-        
-        if request.method == 'POST':
-            action = request.POST.get('action')
+        if action == 'allocate_shift':
+            employee_eID = request.POST.get('employee')
+            shift_id = request.POST.get('shift')
+            start_date = request.POST.get('start_date')
             
-            if action == 'allocate_shift':
-                employee_id = request.POST.get('employee')
-                shift_id = request.POST.get('shift')
-                start_date = request.POST.get('start_date')
+            try:
+                employee = Employee.objects.get(eID=employee_eID)
+                shift = Shift.objects.get(id=shift_id)
                 
-                try:
-                    employee = Employee.objects.get(id=employee_id)
-                    shift = Shift.objects.get(id=shift_id)
-                    
-                    # Create attendance record for the employee
-                    attendance = Attendance.objects.create(
-                        eId=employee,
-                        date=start_date,
-                        shift=shift,
-                        status='Present'
-                    )
-                    
-                    messages.success(request, f'Shift allocated to {employee.firstName} {employee.lastName}')
-                except (Employee.DoesNotExist, Shift.DoesNotExist):
-                    messages.error(request, 'Invalid employee or shift selected')
-                    
-            elif action == 'approve_attendance':
-                attendance_id = request.POST.get('attendance_id')
-                status = request.POST.get('status')
+                # Create attendance record for the employee
+                attendance = Attendance.objects.create(
+                    eId=employee,
+                    date=start_date,
+                    shift=shift,
+                    status='PRESENT'
+                )
                 
-                try:
-                    attendance = Attendance.objects.get(id=attendance_id)
-                    attendance.status = status
-                    attendance.adjusted_by = request.user
-                    attendance.save()
-                    
-                    messages.success(request, 'Attendance status updated successfully')
-                except Attendance.DoesNotExist:
-                    messages.error(request, 'Attendance record not found')
+                messages.success(request, f'Shift allocated to {employee.firstName} {employee.lastName}')
+            except (Employee.DoesNotExist, Shift.DoesNotExist):
+                messages.error(request, 'Invalid employee or shift selected')
+                
+        elif action == 'approve_attendance':
+            attendance_id = request.POST.get('attendance_id')
+            status = request.POST.get('status')
+            
+            try:
+                attendance = Attendance.objects.get(id=attendance_id)
+                attendance.status = status
+                attendance.leave_approved_by = request.user
+                attendance.leave_approval_date = timezone.now()
+                attendance.save()
+                
+                messages.success(request, 'Attendance status updated successfully')
+            except Attendance.DoesNotExist:
+                messages.error(request, 'Attendance record not found')
+    
+    # Get all employees and shifts for the form
+    employees = Employee.objects.all()
+    shifts = Shift.objects.all()
+    
+    # Get attendance records for the current month
+    today = timezone.now()
+    start_date = today.replace(day=1)
+    if today.month == 12:
+        end_date = today.replace(year=today.year + 1, month=1, day=1) - timezone.timedelta(days=1)
+    else:
+        end_date = today.replace(month=today.month + 1, day=1) - timezone.timedelta(days=1)
+    
+    # Get pending leave requests (ON_LEAVE status)
+    pending_leave_requests = Attendance.objects.filter(
+        date__gte=start_date,
+        date__lte=end_date,
+        status='ON_LEAVE'
+    ).select_related('eId', 'shift', 'adjusted_by', 'leave_approved_by').order_by('-date', 'eId')
 
-        context = {
-            'attendance_records': attendance_records,
-            'employees': employees,
-            'shifts': shifts,
-            'today': today,
-            'start_date': start_date,
-            'end_date': end_date
-        }
-        return render(request, 'employee/admin_attendance.html', context)
-    except Exception as e:
-        messages.error(request, f'Error: {str(e)}')
-        return redirect('admin_dashboard')
+    # Get other attendance records (excluding ON_LEAVE)
+    attendance_records = Attendance.objects.filter(
+        date__gte=start_date,
+        date__lte=end_date
+    ).exclude(status='ON_LEAVE').select_related('eId', 'shift', 'adjusted_by', 'leave_approved_by').order_by('-date', 'eId')
+    
+    context = {
+        'employees': employees,
+        'shifts': shifts,
+        'attendance_records': attendance_records,
+        'pending_leave_requests': pending_leave_requests,
+        'start_date': start_date,
+        'end_date': end_date,
+    }
+    
+    return render(request, 'employee/admin_attendance.html', context)
 
 @login_required
 @user_passes_test(is_hr_or_admin)

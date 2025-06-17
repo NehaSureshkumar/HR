@@ -46,6 +46,75 @@
             </form>
         </div>
 
+        <!-- Pending Leave Approvals Section -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Pending Leave Approvals</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Shift</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for record in pending_leave_requests %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{ record.date|date:"M d, Y" }}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-900">
+                                {{ record.eId.firstName }} {{ record.eId.lastName }}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-900">
+                                {{ record.shift.name|default:"-" }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                    {% if record.status == 'PRESENT' %}bg-green-100 text-green-800
+                                    {% elif record.status == 'LATE' %}bg-yellow-100 text-yellow-800
+                                    {% elif record.status == 'LEAVE_APPROVED' %}bg-blue-100 text-blue-800
+                                    {% elif record.status == 'LEAVE_REJECTED' %}bg-red-100 text-red-800
+                                    {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                    {{ record.status }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <form method="post" class="inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="approve_attendance">
+                                    <input type="hidden" name="attendance_id" value="{{ record.id }}">
+                                    <input type="hidden" name="status" value="LEAVE_APPROVED">
+                                    <button type="submit" class="text-green-600 hover:text-green-900 mr-2">
+                                        Approve Leave
+                                    </button>
+                                </form>
+                                <form method="post" class="inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="approve_attendance">
+                                    <input type="hidden" name="attendance_id" value="{{ record.id }}">
+                                    <input type="hidden" name="status" value="LEAVE_REJECTED">
+                                    <button type="submit" class="text-red-600 hover:text-red-900">
+                                        Reject Leave
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                                No pending leave requests found for this month.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- Attendance Records Section -->
         <div class="bg-white rounded-lg shadow-md p-6">
             <h2 class="text-xl font-bold text-gray-800 mb-4">Attendance Records</h2>
@@ -55,10 +124,10 @@
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Shift</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time In</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time Out</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Overtime</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                         </tr>
                     </thead>
@@ -71,6 +140,9 @@
                             <td class="px-6 py-4 text-sm text-gray-900">
                                 {{ record.eId.firstName }} {{ record.eId.lastName }}
                             </td>
+                            <td class="px-6 py-4 text-sm text-gray-900">
+                                {{ record.shift.name|default:"-" }}
+                            </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                 {{ record.time_in|time:"H:i" }}
                             </td>
@@ -79,36 +151,16 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                    {% if record.status == 'Present' %}bg-green-100 text-green-800
-                                    {% elif record.status == 'Late' %}bg-yellow-100 text-yellow-800
-                                    {% else %}bg-red-100 text-red-800{% endif %}">
+                                    {% if record.status == 'PRESENT' %}bg-green-100 text-green-800
+                                    {% elif record.status == 'LATE' %}bg-yellow-100 text-yellow-800
+                                    {% elif record.status == 'LEAVE_APPROVED' %}bg-blue-100 text-blue-800
+                                    {% elif record.status == 'LEAVE_REJECTED' %}bg-red-100 text-red-800
+                                    {% else %}bg-gray-100 text-gray-800{% endif %}">
                                     {{ record.status }}
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {{ record.overtime_hours|floatformat:1|default:"0.0" }} hrs
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                {% if record.status == 'Pending' %}
-                                <form method="post" class="inline">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="action" value="approve_attendance">
-                                    <input type="hidden" name="attendance_id" value="{{ record.id }}">
-                                    <input type="hidden" name="status" value="Present">
-                                    <button type="submit" class="text-green-600 hover:text-green-900 mr-2">
-                                        Approve
-                                    </button>
-                                </form>
-                                <form method="post" class="inline">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="action" value="approve_attendance">
-                                    <input type="hidden" name="attendance_id" value="{{ record.id }}">
-                                    <input type="hidden" name="status" value="Absent">
-                                    <button type="submit" class="text-red-600 hover:text-red-900">
-                                        Reject
-                                    </button>
-                                </form>
-                                {% endif %}
+                                <!-- Leave approval actions are now in the dedicated section -->
                             </td>
                         </tr>
                         {% empty %}

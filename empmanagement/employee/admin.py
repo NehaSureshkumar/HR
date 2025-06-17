@@ -141,15 +141,33 @@ class AdjustedFilter(SimpleListFilter):
             return queryset.filter(is_adjusted=False)
         return queryset
 
+@admin.action(description='Approve Leave for selected entries')
+def approve_leave(modeladmin, request, queryset):
+    queryset.update(
+        status='LEAVE_APPROVED',
+        leave_approved_by=request.user,
+        leave_approval_date=timezone.now()
+    )
+
+@admin.action(description='Reject Leave for selected entries')
+def reject_leave(modeladmin, request, queryset):
+    queryset.update(
+        status='LEAVE_REJECTED',
+        leave_approved_by=request.user,
+        leave_approval_date=timezone.now()
+    )
+
 class AttendanceAdmin(admin.ModelAdmin):
     list_display = ('eId', 'date', 'time_in_display', 'time_out_display', 
                    'status', 'is_late', 'overtime_hours', 'location', 
-                   'is_remote', 'is_adjusted', 'adjusted_by_display')
+                   'is_remote', 'is_adjusted', 'adjusted_by_display', 'shift')
     list_filter = ('status', LateFilter, AdjustedFilter, 'location', 'is_remote', 'shift')
-    search_fields = ('eId', 'notes', 'adjustment_reason')
+    search_fields = ('eId', 'notes', 'adjustment_reason', 'leave_approval_notes')
     date_hierarchy = 'date'
     readonly_fields = ('created_at', 'updated_at', 'is_adjusted', 'adjusted_by', 
-                      'adjustment_date', 'adjustment_reason')
+                      'adjustment_date', 'adjustment_reason', 'leave_approved_by',
+                      'leave_approval_date')
+    actions = [approve_leave, reject_leave]
     fieldsets = (
         ('Basic Information', {
             'fields': ('eId', 'date', 'shift')
@@ -159,6 +177,10 @@ class AttendanceAdmin(admin.ModelAdmin):
         }),
         ('Location & Notes', {
             'fields': ('location', 'is_remote', 'notes')
+        }),
+        ('Leave Approval', {
+            'fields': ('leave_approved_by', 'leave_approval_date', 'leave_approval_notes'),
+            'classes': ('collapse',)
         }),
         ('Adjustment Information', {
             'fields': ('is_adjusted', 'adjusted_by', 'adjustment_date', 'adjustment_reason'),

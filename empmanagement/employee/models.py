@@ -192,7 +192,7 @@ class EmployeeShift(models.Model):
         return f"{self.employee.eID} - {self.shift.name}"
 
 class Attendance(models.Model):
-    eId = models.CharField(max_length=20)
+    eId = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='attendances')
     date = models.DateField(default=timezone.now)
     time_in = models.DateTimeField(null=True, blank=True)
     time_out = models.DateTimeField(null=True, blank=True)
@@ -202,7 +202,9 @@ class Attendance(models.Model):
         ('HALF_DAY', 'Half Day'),
         ('LATE', 'Late'),
         ('EARLY_LEAVE', 'Early Leave'),
-        ('ON_LEAVE', 'On Leave')
+        ('ON_LEAVE', 'On Leave'),
+        ('LEAVE_APPROVED', 'Leave Approved'),
+        ('LEAVE_REJECTED', 'Leave Rejected')
     ], default='PRESENT')
     overtime_hours = models.DecimalField(max_digits=4, decimal_places=2, default=0)
     location = models.CharField(max_length=100, default='Office')
@@ -217,6 +219,9 @@ class Attendance(models.Model):
     adjusted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='adjusted_attendances')
     adjustment_reason = models.TextField(blank=True, null=True)
     adjustment_date = models.DateTimeField(null=True, blank=True)
+    leave_approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_attendance_leaves')
+    leave_approval_date = models.DateTimeField(null=True, blank=True)
+    leave_approval_notes = models.TextField(blank=True, null=True)
 
     class Meta:
         db_table = 'employee_attendance'
