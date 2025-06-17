@@ -1,0 +1,159 @@
+{% extends 'employee/base.html' %}
+{% load static %}
+
+{% block title %}Attendance Reports - Employee Management System{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/attendance.css' %}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Attendance Reports</h1>
+        <div class="flex space-x-4">
+            <a href="{% url 'export_attendance' %}" class="action-button primary">
+                <i class="fas fa-download mr-2"></i>Export Report
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="attendance-stats">
+        <div class="stat-card present">
+            <div class="stat-value">{{ attendance_stats.total_present }}</div>
+            <div class="stat-label">Present</div>
+        </div>
+        <div class="stat-card late">
+            <div class="stat-value">{{ attendance_stats.total_late }}</div>
+            <div class="stat-label">Late</div>
+        </div>
+        <div class="stat-card absent">
+            <div class="stat-value">{{ attendance_stats.total_absent }}</div>
+            <div class="stat-label">Absent</div>
+        </div>
+        <div class="stat-card overtime">
+            <div class="stat-value">{{ attendance_stats.avg_overtime|floatformat:1 }}</div>
+            <div class="stat-label">Avg. Overtime Hours</div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <!-- Daily Attendance Trend -->
+        <div class="chart-container">
+            <h3 class="text-lg font-semibold mb-4">Daily Attendance Trend</h3>
+            <canvas id="dailyTrendChart"></canvas>
+        </div>
+        
+        <!-- Monthly Summary -->
+        <div class="chart-container">
+            <h3 class="text-lg font-semibold mb-4">Monthly Attendance Summary</h3>
+            <canvas id="monthlySummaryChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Employee Attendance Summary -->
+    <div class="attendance-card">
+        <h3 class="text-lg font-semibold mb-4">Employee Attendance Summary</h3>
+        <div class="overflow-x-auto">
+            <table class="attendance-table">
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Present</th>
+                        <th>Late</th>
+                        <th>Absent</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for employee in employee_attendance %}
+                    <tr>
+                        <td>{{ employee.firstName }} {{ employee.lastName }}</td>
+                        <td>{{ employee.present }}</td>
+                        <td>{{ employee.late }}</td>
+                        <td>{{ employee.absent }}</td>
+                        <td>
+                            <a href="{% url 'employee_attendance_detail' employee.eID %}" class="action-button secondary">
+                                View Details
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    // Daily Trend Chart
+    const dailyTrendCtx = document.getElementById('dailyTrendChart').getContext('2d');
+    new Chart(dailyTrendCtx, {
+        type: 'line',
+        data: {
+            labels: {{ daily_trends|safe }}.map(item => item.date),
+            datasets: [{
+                label: 'Present',
+                data: {{ daily_trends|safe }}.map(item => item.present),
+                borderColor: 'rgb(34, 197, 94)',
+                tension: 0.1
+            }, {
+                label: 'Late',
+                data: {{ daily_trends|safe }}.map(item => item.late),
+                borderColor: 'rgb(234, 179, 8)',
+                tension: 0.1
+            }, {
+                label: 'Absent',
+                data: {{ daily_trends|safe }}.map(item => item.absent),
+                borderColor: 'rgb(239, 68, 68)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    // Monthly Summary Chart
+    const monthlySummaryCtx = document.getElementById('monthlySummaryChart').getContext('2d');
+    new Chart(monthlySummaryCtx, {
+        type: 'bar',
+        data: {
+            labels: {{ monthly_summary|safe }}.map(item => new Date(item.month).toLocaleDateString('default', { month: 'short', year: 'numeric' })),
+            datasets: [{
+                label: 'Present',
+                data: {{ monthly_summary|safe }}.map(item => item.present),
+                backgroundColor: 'rgb(34, 197, 94)'
+            }, {
+                label: 'Late',
+                data: {{ monthly_summary|safe }}.map(item => item.late),
+                backgroundColor: 'rgb(234, 179, 8)'
+            }, {
+                label: 'Absent',
+                data: {{ monthly_summary|safe }}.map(item => item.absent),
+                backgroundColor: 'rgb(239, 68, 68)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %} 

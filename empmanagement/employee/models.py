@@ -12,6 +12,9 @@ from .utils import send_new_employee_notification
 import logging
 from threading import local
 from django.conf import settings
+from datetime import time
+from django.core.validators import MinValueValidator, MaxValueValidator
+from django.utils.translation import gettext_lazy as _
 
 logger = logging.getLogger(__name__)
 
@@ -132,6 +135,14 @@ ENDORSEMENT_TYPE_CHOICES = (
     ('D', 'D'),
 )
 
+# Shift choices
+SHIFT_CHOICES = (
+    ('MORNING', 'Morning (9:00 AM - 6:00 PM)'),
+    ('AFTERNOON', 'Afternoon (2:00 PM - 11:00 PM)'),
+    ('NIGHT', 'Night (10:00 PM - 7:00 AM)'),
+    ('FLEXIBLE', 'Flexible Hours'),
+)
+
 # Create your models here.
 
 class Employee(models.Model):
@@ -153,27 +164,131 @@ class Employee(models.Model):
     def __str__(self):  
         return "%s %s" % (self.eID, self.firstName)
 
-class Attendance(models.Model):
-    eId = models.CharField(max_length=20)
-    date = models.DateField(default=timezone.now)
-    time_in = models.DateTimeField(default=timezone.now)
-    time_out = models.DateTimeField(null=True, blank=True)
-    status = models.CharField(max_length=20, choices=[
-        ('PRESENT', 'Present'),
-        ('ABSENT', 'Absent'),
-        ('LATE', 'Late'),
-        ('HALF_DAY', 'Half Day')
-    ], default='PRESENT')
-    overtime_hours = models.DecimalField(max_digits=4, decimal_places=2, default=0)
+class Shift(models.Model):
+    name = models.CharField(max_length=50)
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    grace_period = models.IntegerField(default=15, help_text="Grace period in minutes")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.start_time.strftime('%H:%M')} - {self.end_time.strftime('%H:%M')})"
+
+class EmployeeShift(models.Model):
+    employee = models.ForeignKey('Employee', on_delete=models.CASCADE)
+    shift = models.ForeignKey(Shift, on_delete=models.CASCADE)
+    start_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        unique_together = ('employee', 'start_date')
+
+    def __str__(self):
+        return f"{self.employee.eID} - {self.shift.name}"
+
+class Attendance(models.Model):
+    eId = models.CharField(max_length=20)
+    date = models.DateField(default=timezone.now)
+    time_in = models.DateTimeField(null=True, blank=True)
+    time_out = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=[
+        ('PRESENT', 'Present'),
+        ('ABSENT', 'Absent'),
+        ('HALF_DAY', 'Half Day'),
+        ('LATE', 'Late'),
+        ('EARLY_LEAVE', 'Early Leave'),
+        ('ON_LEAVE', 'On Leave')
+    ], default='PRESENT')
+    overtime_hours = models.DecimalField(max_digits=4, decimal_places=2, default=0)
+    location = models.CharField(max_length=100, default='Office')
+    is_remote = models.BooleanField(default=False)
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_late = models.BooleanField(default=False)
+    auto_clocked_out = models.BooleanField(default=False)
+    shift = models.ForeignKey(Shift, on_delete=models.SET_NULL, null=True, blank=True)
+    is_adjusted = models.BooleanField(default=False)
+    adjusted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='adjusted_attendances')
+    adjustment_reason = models.TextField(blank=True, null=True)
+    adjustment_date = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
         db_table = 'employee_attendance'
-        ordering = ['-date', '-time_in']
+        unique_together = ('eId', 'date')
+        permissions = [
+            ("can_adjust_attendance", "Can adjust attendance records"),
+            ("can_view_attendance_reports", "Can view attendance reports"),
+        ]
 
     def __str__(self):
         return f"{self.eId} - {self.date}"
+
+    def calculate_work_hours(self):
+        if self.time_in and self.time_out:
+            time_in = timezone.localtime(self.time_in)
+            time_out = timezone.localtime(self.time_out)
+            duration = time_out - time_in
+            return round(duration.total_seconds() / 3600, 2)
+        return 0
+
+    def is_clocked_in(self):
+        return self.time_in is not None and self.time_out is None
+
+    def is_clocked_out(self):
+        return self.time_in is not None and self.time_out is not None
+
+    def get_status(self):
+        if not self.time_in:
+            return 'Not Clocked In'
+        if not self.time_out:
+            return 'Clocked In'
+        return 'Clocked Out'
+
+    def check_late_status(self):
+        if self.time_in and self.shift:
+            time_in = timezone.localtime(self.time_in)
+            grace_time = timezone.localtime(self.time_in).replace(
+                hour=self.shift.start_time.hour,
+                minute=self.shift.start_time.minute
+            ) + timezone.timedelta(minutes=self.shift.grace_period)
+            
+            if time_in > grace_time:
+                self.is_late = True
+                self.status = 'LATE'
+            else:
+                self.is_late = False
+                self.status = 'PRESENT'
+            self.save()
+
+    def adjust_attendance(self, user, time_in=None, time_out=None, status=None, notes=None):
+        if time_in:
+            self.time_in = time_in
+        if time_out:
+            self.time_out = time_out
+        if status:
+            self.status = status
+        if notes:
+            self.notes = notes
+        
+        self.is_adjusted = True
+        self.adjusted_by = user
+        self.adjustment_date = timezone.now()
+        self.adjustment_reason = notes
+        self.save()
+        
+        # Recalculate work hours and late status
+        self.check_late_status()
+        if self.time_out:
+            work_hours = self.calculate_work_hours()
+            if work_hours > 8:
+                self.overtime_hours = work_hours - 8
+            self.save()
 
 class Notice(models.Model):
     Id = models.CharField(primary_key=True,max_length=20)
@@ -342,6 +457,10 @@ class LeaveRequest(models.Model):
 
     def __str__(self):
         return f"{self.eId} - {self.leave_type} ({self.start_date} to {self.end_date})"
+
+    @property
+    def duration(self):
+        return (self.end_date - self.start_date).days + 1
 
 class TrainingProgram(models.Model):
     title = models.CharField(max_length=200)
@@ -666,3 +785,56 @@ class PersonalDetail(models.Model):
     
     def __str__(self):
         return f"{self.employee.firstName} {self.employee.lastName}'s Personal Details" 
+
+class LeaveType(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    max_days = models.PositiveIntegerField(default=30)
+    requires_approval = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = _('Leave Type')
+        verbose_name_plural = _('Leave Types')
+
+class Leave(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='leaves')
+    leave_type = models.ForeignKey(LeaveType, on_delete=models.CASCADE)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    reason = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_leaves')
+    approved_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.employee} - {self.leave_type} ({self.start_date} to {self.end_date})"
+
+    @property
+    def duration(self):
+        return (self.end_date - self.start_date).days + 1
+
+    class Meta:
+        verbose_name = _('Leave')
+        verbose_name_plural = _('Leaves')
+        ordering = ['-start_date']
+
+    def save(self, *args, **kwargs):
+        if self.status == 'approved' and not self.approved_at:
+            self.approved_at = timezone.now()
+        super().save(*args, **kwargs) 

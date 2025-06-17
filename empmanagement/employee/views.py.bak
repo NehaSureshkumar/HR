@@ -6,7 +6,8 @@ from employee.models import (
     designations_opt, DOCUMENT_TYPES, PerformanceReview, Goal, LeaveRequest,
     TrainingProgram, TrainingEnrollment, Payroll, Project, EmployeeInformation, IDCard, WiFiAccess, ParkingDetails, InsuranceDetails, ProfileUpdateRequest,
     TrainingTag, TrainingBlog, TrainingDocument, Asset, AssetCategory, AssetAssignment,
-    BankDetail, InsurancePolicy, TaxDetail, PersonalDetail, Shift, EmployeeShift
+    BankDetail, InsurancePolicy, TaxDetail, PersonalDetail, Shift, EmployeeShift,
+    Leave, LeaveType, LeaveBalance
 )
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -957,27 +958,16 @@ def leave_request_list(request):
     try:
         user_profile = UserProfile.objects.get(user=request.user)
         if request.user.is_staff:
-            # For HR/Admin: show all leave requests
-            requests = LeaveRequest.objects.all().order_by('-created_at')
+            requests = LeaveRequest.objects.all()
         else:
-            # For employees: show only their leave requests
-            requests = LeaveRequest.objects.filter(eId=request.user.username).order_by('-created_at')
-        
+            requests = LeaveRequest.objects.filter(eId=request.user.username)
         # Attach employee name for template
         for req in requests:
-            try:
-                employee = Employee.objects.get(eID=req.eId)
-                req.employee_name = f"{employee.firstName} {employee.lastName}"
-            except Employee.DoesNotExist:
-                req.employee_name = req.eId
-                
-        return render(request, 'employee/leave_request_list.html', {
-            'requests': requests,
-            'is_staff': request.user.is_staff
-        })
+            req.employee_name = get_employee_name(req.eId)
+        return render(request, 'employee/leave_request_list.html', {'requests': requests})
     except UserProfile.DoesNotExist:
-        messages.error(request, 'User profile not found.')
-        return redirect('dashboard')
+        requests = []
+        return render(request, 'employee/leave_request_list.html', {'requests': requests})
 
 @login_required
 def create_leave_request(request):
@@ -1040,20 +1030,20 @@ def approve_leave_request(request, request_id):
 def clock_in(request):
     """Handle employee clock in"""
     if request.method == 'POST':
-        try:
+    try:
             employee = Employee.objects.get(email=request.user.email)
-            today = timezone.now().date()
+        today = timezone.now().date()
             
             # Check if already clocked in
             if Attendance.objects.filter(eId=employee, date=today).exists():
                 messages.error(request, 'You have already clocked in today.')
                 return redirect('attendance_list')
 
-            # Create new attendance record
+        # Create new attendance record
             current_time = timezone.now()
-            attendance = Attendance.objects.create(
+        attendance = Attendance.objects.create(
                 eId=employee,
-                date=today,
+            date=today,
                 time_in=current_time,
                 status='Present'
             )
@@ -1061,7 +1051,7 @@ def clock_in(request):
             messages.success(request, 'Successfully clocked in!')
         except Employee.DoesNotExist:
             messages.error(request, 'Employee profile not found. Please contact HR.')
-        except Exception as e:
+    except Exception as e:
             messages.error(request, f'Error clocking in: {str(e)}')
             
     return redirect('attendance_list')
@@ -1070,17 +1060,17 @@ def clock_in(request):
 def clock_out(request):
     """Handle employee clock out"""
     if request.method == 'POST':
-        try:
+    try:
             employee = Employee.objects.get(email=request.user.email)
-            today = timezone.now().date()
+        today = timezone.now().date()
 
             # Get today's attendance record
-            attendance = Attendance.objects.filter(
+        attendance = Attendance.objects.filter(
                 eId=employee,
                 date=today
-            ).first()
+        ).first()
 
-            if not attendance:
+        if not attendance:
                 messages.error(request, 'You have not clocked in today.')
                 return redirect('attendance_list')
                 
@@ -1090,7 +1080,7 @@ def clock_out(request):
             
             # Update attendance record
             current_time = timezone.now()
-            attendance.time_out = current_time
+        attendance.time_out = current_time
             
             # Calculate overtime if any
             if attendance.shift:
@@ -1105,7 +1095,7 @@ def clock_out(request):
             messages.success(request, 'Successfully clocked out!')
         except Employee.DoesNotExist:
             messages.error(request, 'Employee profile not found. Please contact HR.')
-        except Exception as e:
+    except Exception as e:
             messages.error(request, f'Error clocking out: {str(e)}')
             
     return redirect('attendance_list')
@@ -1206,15 +1196,15 @@ def admin_attendance(request):
                 except Attendance.DoesNotExist:
                     messages.error(request, 'Attendance record not found')
 
-        context = {
+    context = {
             'attendance_records': attendance_records,
-            'employees': employees,
+        'employees': employees,
             'shifts': shifts,
             'today': today,
             'start_date': start_date,
             'end_date': end_date
-        }
-        return render(request, 'employee/admin_attendance.html', context)
+    }
+    return render(request, 'employee/admin_attendance.html', context)
     except Exception as e:
         messages.error(request, f'Error: {str(e)}')
         return redirect('admin_dashboard')
@@ -1374,1154 +1364,150 @@ def export_attendance(request):
     return response
 
 @login_required
-def training_program_list(request):
+@user_passes_test(lambda u: u.userprofile.role in ['ADMIN', 'HR'])
+def admin_leave_management(request):
+    # Get leave statistics
+    today = timezone.now().date()
+    pending_count = Leave.objects.filter(status='pending').count()
+    approved_today = Leave.objects.filter(status='approved', approved_at__date=today).count()
+    rejected_today = Leave.objects.filter(status='rejected', updated_at__date=today).count()
+    active_leaves = Leave.objects.filter(
+        status='approved',
+        start_date__lte=today,
+        end_date__gte=today
+    ).count()
+
+    # Get all leave requests
+    leaves = Leave.objects.all().order_by('-created_at')
+
+    context = {
+        'pending_count': pending_count,
+        'approved_today': approved_today,
+        'rejected_today': rejected_today,
+        'active_leaves': active_leaves,
+        'leaves': leaves,
+    }
+    return render(request, 'employee/admin_leave_management.html', context)
+
+@login_required
+@user_passes_test(lambda u: u.userprofile.role in ['ADMIN', 'HR'])
+def leave_details(request, leave_id):
     try:
-        user_profile = UserProfile.objects.get(user=request.user)
-        # Show all programs regardless of role
-        programs = TrainingProgram.objects.all()
-        return render(request, 'employee/training_program_list.html', {'programs': programs})
-    except UserProfile.DoesNotExist:
-        programs = []
-        return render(request, 'employee/training_program_list.html', {'programs': programs})
+        leave = Leave.objects.get(id=leave_id)
+        data = {
+            'employee_name': f"{leave.employee.firstName} {leave.employee.lastName}",
+            'leave_type': leave.leave_type.name,
+            'start_date': leave.start_date.strftime('%Y-%m-%d'),
+            'end_date': leave.end_date.strftime('%Y-%m-%d'),
+            'duration': leave.duration,
+            'reason': leave.reason,
+            'status': leave.get_status_display(),
+            'approved_by': leave.approved_by.get_full_name() if leave.approved_by else None,
+            'rejection_reason': leave.rejection_reason,
+        }
+        return JsonResponse(data)
+    except Leave.DoesNotExist:
+        return JsonResponse({'error': 'Leave request not found'}, status=404)
 
 @login_required
-@role_required(['ADMIN', 'HR'])
-def create_training_program(request):
-    if request.method == 'POST':
-        form = TrainingProgramForm(request.POST)
-        if form.is_valid():
-            program = form.save()
-            messages.success(request, 'Training program created successfully!')
-            return redirect('training_program_list')
-    else:
-        form = TrainingProgramForm()
+@user_passes_test(lambda u: u.userprofile.role in ['ADMIN', 'HR'])
+def process_leave_request(request):
+    if request.method != 'POST':
+        return redirect('admin_leave_management')
     
-    return render(request, 'employee/create_training_program.html', {
-        'form': form,
-        'page_title': 'Create Training Program'
-    })
+    leave_id = request.POST.get('leave_id')
+    action = request.POST.get('action')
+    rejection_reason = request.POST.get('rejection_reason', '')
+    
+    try:
+        leave = Leave.objects.get(id=leave_id)
+        
+        if action == 'approve':
+            leave.status = 'approved'
+            leave.approved_by = request.user
+            leave.approved_at = timezone.now()
+            messages.success(request, 'Leave request approved successfully.')
+        elif action == 'reject':
+            if not rejection_reason:
+                messages.error(request, 'Please provide a reason for rejection.')
+                return redirect('leave_details', leave_id=leave_id)
+            leave.status = 'rejected'
+            leave.rejection_reason = rejection_reason
+            messages.success(request, 'Leave request rejected successfully.')
+        else:
+            messages.error(request, 'Invalid action.')
+            return redirect('leave_details', leave_id=leave_id)
+        
+        leave.save()
+        AuditLog.objects.create(
+            user=request.user,
+            action=f'Leave {action.title()}',
+            details=f'{action.title()}ed leave request for {leave.employee.firstName} {leave.employee.lastName}'
+        )
+        return redirect('admin_leave_management')
+        
+    except Leave.DoesNotExist:
+        messages.error(request, 'Leave request not found.')
+        return redirect('admin_leave_management')
+    except Exception as e:
+        messages.error(request, f'An error occurred: {str(e)}')
+        return redirect('admin_leave_management')
 
 @login_required
-@role_required(['ADMIN', 'HR'])
-def edit_training_program(request, program_id):
-    program = get_object_or_404(TrainingProgram, id=program_id)
-    
-    if request.method == 'POST':
-        form = TrainingProgramForm(request.POST, instance=program)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Training program updated successfully!')
-            return redirect('training_program_list')
-    else:
-        form = TrainingProgramForm(instance=program)
-    
-    return render(request, 'employee/create_training_program.html', {
-        'form': form,
-        'program': program,
-        'page_title': 'Edit Training Program'
-    })
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def delete_training_program(request, program_id):
-    program = get_object_or_404(TrainingProgram, id=program_id)
-    
-    if request.method == 'POST':
-        program.delete()
-        messages.success(request, 'Training program deleted successfully!')
-        return redirect('training_program_list')
-    
-    return render(request, 'employee/delete_training_program.html', {
-        'program': program
-    })
-
-@login_required
-def enroll_training(request, program_id):
+def leave_balance(request):
     try:
         employee = Employee.objects.get(eID=request.user.username)
-        program = get_object_or_404(TrainingProgram, id=program_id)
+        current_year = timezone.now().year
         
-        if program.enrolled_count < program.capacity:
-            enrollment = TrainingEnrollment.objects.create(
+        # Get all leave types
+        leave_types = LeaveType.objects.filter(is_active=True)
+        
+        # Get or create balances for each leave type
+        balances = []
+        for leave_type in leave_types:
+            balance, created = LeaveBalance.objects.get_or_create(
                 employee=employee,
-                program=program,
-                status='ENROLLED'
+                leave_type=leave_type,
+                year=current_year,
+                defaults={
+                    'total_days': leave_type.max_days
+                }
             )
-            program.enrolled_count += 1
-            program.save()
-            messages.success(request, 'Successfully enrolled in training program.')
-        else:
-            messages.error(request, 'Training program is full.')
+            
+            # Get approved leaves for this type
+            approved_leaves = Leave.objects.filter(
+                employee=employee,
+                leave_type=leave_type,
+                status='approved',
+                start_date__year=current_year
+            )
+            
+            # Get pending leaves for this type
+            pending_leaves = Leave.objects.filter(
+                employee=employee,
+                leave_type=leave_type,
+                status='pending',
+                start_date__year=current_year
+            )
+            
+            balances.append({
+                'leave_type': leave_type,
+                'total_days': balance.total_days,
+                'used_days': balance.used_days,
+                'carried_forward': balance.carried_forward,
+                'balance': balance.balance,
+                'pending_days': sum(leave.duration for leave in pending_leaves)
+            })
+        
+        context = {
+            'employee': employee,
+            'balances': balances,
+            'year': current_year
+        }
+        
+        return render(request, 'employee/leave_balance.html', context)
+        
     except Employee.DoesNotExist:
-        messages.error(request, 'Employee profile not found.')
-    return redirect('training_program_list')
-
-@login_required
-def training_blog_list(request, program_id):
-    program = get_object_or_404(TrainingProgram, id=program_id)
-    tag = request.GET.get('tag')
-    
-    if tag:
-        blogs = program.blogs.filter(tags__name=tag, is_published=True)
-    else:
-        blogs = program.blogs.filter(is_published=True)
-    
-    tags = TrainingTag.objects.filter(blogs__program=program).distinct()
-    
-    context = {
-        'program': program,
-        'blogs': blogs,
-        'tags': tags,
-        'current_tag': tag
-    }
-    return render(request, 'employee/training_blog_list.html', context)
-
-@login_required
-def create_training_blog(request, program_id):
-    program = get_object_or_404(TrainingProgram, id=program_id)
-    
-    if request.method == 'POST':
-        form = TrainingBlogForm(request.POST, request.FILES)
-        if form.is_valid():
-            blog = form.save(commit=False)
-            blog.program = program
-            blog.author = request.user
-            blog.save()
-            
-            # Handle tags
-            tag_list = form.cleaned_data['tags']
-            for tag_name in tag_list:
-                tag, _ = TrainingTag.objects.get_or_create(name=tag_name)
-                blog.tags.add(tag)
-            
-            # Handle documents
-            files = request.FILES.getlist('documents')
-            for file in files:
-                TrainingDocument.objects.create(
-                    blog=blog,
-                    file=file,
-                    title=file.name
-                )
-            
-            messages.success(request, 'Blog post created successfully.')
-            return redirect('training_blog_list', program_id=program.id)
-    else:
-        form = TrainingBlogForm()
-    
-    context = {
-        'form': form,
-        'program': program,
-        'blog': None
-    }
-    return render(request, 'employee/create_training_blog.html', context)
-
-@login_required
-def training_blog_detail(request, blog_id):
-    blog = get_object_or_404(TrainingBlog, id=blog_id)
-    context = {
-        'blog': blog,
-        'documents': blog.documents.all()
-    }
-    return render(request, 'employee/training_blog_detail.html', context)
-
-@login_required
-def edit_training_blog(request, blog_id):
-    blog = get_object_or_404(TrainingBlog, id=blog_id)
-    
-    if request.user != blog.author:
-        messages.error(request, 'You do not have permission to edit this blog post.')
-        return redirect('training_blog_detail', blog_id=blog.id)
-    
-    if request.method == 'POST':
-        form = TrainingBlogForm(request.POST, request.FILES, instance=blog)
-        if form.is_valid():
-            blog = form.save()
-            
-            # Handle tags
-            blog.tags.clear()
-            tag_list = form.cleaned_data['tags']
-            for tag_name in tag_list:
-                tag, _ = TrainingTag.objects.get_or_create(name=tag_name)
-                blog.tags.add(tag)
-            
-            # Handle new documents
-            files = request.FILES.getlist('documents')
-            for file in files:
-                TrainingDocument.objects.create(
-                    blog=blog,
-                    file=file,
-                    title=file.name
-                )
-            
-            messages.success(request, 'Blog post updated successfully.')
-            return redirect('training_blog_detail', blog_id=blog.id)
-    else:
-        initial_data = {
-            'tags': ', '.join(tag.name for tag in blog.tags.all())
-        }
-        form = TrainingBlogForm(instance=blog, initial=initial_data)
-    
-    context = {
-        'form': form,
-        'blog': blog,
-        'program': blog.program
-    }
-    return render(request, 'employee/create_training_blog.html', context)
-
-@login_required
-def delete_training_blog(request, blog_id):
-    blog = get_object_or_404(TrainingBlog, id=blog_id)
-    
-    if request.user != blog.author:
-        messages.error(request, 'You do not have permission to delete this blog post.')
-        return redirect('training_blog_detail', blog_id=blog.id)
-    
-    program_id = blog.program.id
-    blog.delete()
-    messages.success(request, 'Blog post deleted successfully.')
-    return redirect('training_blog_list', program_id=program_id)
-
-@login_required
-def delete_training_document(request, document_id):
-    document = get_object_or_404(TrainingDocument, id=document_id)
-    blog_id = document.blog.id
-    
-    if request.user != document.blog.author:
-        messages.error(request, 'You do not have permission to delete this document.')
-        return redirect('training_blog_detail', blog_id=blog_id)
-    
-    document.delete()
-    messages.success(request, 'Document deleted successfully.')
-    return redirect('training_blog_detail', blog_id=blog_id)
-
-@login_required
-@role_required(['HR', 'Admin'])
-def employee_detail(request, employee_id):
-    employee = get_object_or_404(Employee, id=employee_id)
-    return render(request, 'employee/employee_detail.html', {'employee': employee})
-
-@login_required
-@role_required(['HR', 'Admin'])
-def edit_employee(request, employee_id):
-    employee = get_object_or_404(Employee, id=employee_id)
-    if request.method == 'POST':
-        employee.firstName = request.POST.get('firstName', employee.firstName)
-        employee.lastName = request.POST.get('lastName', employee.lastName)
-        employee.email = request.POST.get('email', employee.email)
-        employee.phoneNo = request.POST.get('phoneNo', employee.phoneNo)
-        employee.department = request.POST.get('department', employee.department)
-        employee.designation = request.POST.get('designation', employee.designation)
-        employee.salary = request.POST.get('salary', employee.salary)
-        employee.save()
-        messages.success(request, 'Employee updated successfully!')
-        return redirect('admin_dashboard')
-    return render(request, 'employee/edit_employee.html', {'employee': employee})
-
-@login_required
-@role_required(['HR', 'Admin'])
-def delete_employee(request, employee_id):
-    employee = get_object_or_404(Employee, id=employee_id)
-    if request.method == 'POST':
-        employee.delete()
-        messages.success(request, 'Employee deleted successfully!')
-        return redirect('admin_dashboard')
-    return render(request, 'employee/delete_employee.html', {'employee': employee})
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def employee_list(request):
-    # Get all employees
-    employees = list(Employee.objects.all().order_by('-joinDate'))
-    for emp in employees:
-        emp.is_hr_admin = False
-        emp.is_dummy = False
-    # Get all HR/Admin users from UserProfile
-    from django.contrib.auth.models import User
-    hr_admin_profiles = UserProfile.objects.filter(role__in=['HR', 'ADMIN'])
-    for profile in hr_admin_profiles:
-        try:
-            emp = Employee.objects.get(eID=profile.user.username)
-            emp.is_hr_admin = True
-            emp.is_dummy = False
-        except Employee.DoesNotExist:
-            user = profile.user
-            dummy = type('DummyEmp', (), {})()
-            dummy.id = user.id
-            dummy.firstName = user.first_name or user.username
-            dummy.lastName = user.last_name or ''
-            dummy.email = user.email
-            dummy.department = getattr(profile, 'department', '-')
-            dummy.designation = profile.role
-            dummy.joinDate = user.date_joined
-            dummy.user = user
-            dummy.is_hr_admin = True
-            dummy.is_dummy = True
-            employees.append(dummy)
-    all_employees = employees
-    return render(request, 'employee/employee_list.html', {'employees': all_employees})
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def report_download(request):
-    return render(request, 'employee/report_download.html')
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def company_profile(request):
-    return render(request, 'employee/company_profile.html')
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def policies(request):
-    return render(request, 'employee/policies.html')
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def notifications(request):
-    # Get all notifications for the user
-    notifications = Notice.objects.all().order_by('-publishDate')
-    return render(request, 'employee/notifications.html', {
-        'notifications': notifications
-    })
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def organizational_chart(request):
-    # Get all employees grouped by department
-    departments = Employee.objects.values('department').distinct()
-    org_data = {}
-    for dept in departments:
-        if dept['department']:
-            org_data[dept['department']] = Employee.objects.filter(
-                department=dept['department']
-            ).order_by('designation')
-    
-    return render(request, 'employee/organizational_chart.html', {
-        'org_data': org_data
-    })
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def project_list(request, status):
-    status_map = {
-        'ongoing': ('ONGOING', 'Ongoing Projects'),
-        'at-risk': ('AT_RISK', 'At Risk Projects'),
-        'upcoming': ('UPCOMING', 'Upcoming Projects'),
-        'on-schedule': ('ON_SCHEDULE', 'On Schedule Projects'),
-    }
-    if status not in status_map:
-        messages.error(request, 'Invalid project status.')
-        return redirect('admin_dashboard')
-    status_code, title = status_map[status]
-    # Fix: Get employees by matching eID to UserProfile's user.username where role is EMPLOYEE
-    employee_eids = UserProfile.objects.filter(role='EMPLOYEE').values_list('user__username', flat=True)
-    employees = Employee.objects.filter(eID__in=employee_eids)
-    if request.method == 'POST':
-        name = request.POST.get('name')
-        project_status = request.POST.get('status')
-        start_date = request.POST.get('start_date')
-        end_date = request.POST.get('end_date')
-        description = request.POST.get('description')
-        employee_ids = request.POST.getlist('employees')
-        project = Project.objects.create(
-            name=name,
-            status=project_status,
-            start_date=start_date,
-            end_date=end_date,
-            description=description
-        )
-        if employee_ids:
-            project.employees.set(employee_ids)
-        project.save()
-        messages.success(request, 'Project created successfully!')
-        return redirect('project_list', project_status.lower().replace('_', '-'))
-    projects = Project.objects.filter(status=status_code).order_by('-start_date')
-    return render(request, 'employee/project_list.html', {'projects': projects, 'title': title, 'employees': employees})
-
-# --- Project Management Forms ---
-class ProjectForm(forms.ModelForm):
-    class Meta:
-        model = Project
-        fields = ['name', 'status', 'start_date', 'end_date', 'description', 'employees']
-        widgets = {
-            'start_date': forms.DateInput(attrs={'type': 'date'}),
-            'end_date': forms.DateInput(attrs={'type': 'date'}),
-            'employees': forms.SelectMultiple(attrs={'class': 'form-multiselect'}),
-        }
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Only allow employees (not admins/HR) to be assigned
-        employee_eids = UserProfile.objects.filter(role='EMPLOYEE').values_list('user__username', flat=True)
-        self.fields['employees'].queryset = Employee.objects.filter(eID__in=employee_eids)
-
-# --- Project Management Views ---
-@login_required
-@role_required(['ADMIN', 'HR'])
-def create_project(request):
-    if request.method == 'POST':
-        form = ProjectForm(request.POST)
-        if form.is_valid():
-            project = form.save()
-            messages.success(request, 'Project created successfully!')
-            return redirect('project_list', project.status.lower().replace('_', '-'))
-    else:
-        form = ProjectForm()
-    return render(request, 'employee/project_form.html', {'form': form, 'action': 'Create'})
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def edit_project(request, project_id):
-    project = get_object_or_404(Project, id=project_id)
-    if request.method == 'POST':
-        form = ProjectForm(request.POST, instance=project)
-        if form.is_valid():
-            project = form.save()
-            messages.success(request, 'Project updated successfully!')
-            return redirect('project_list', project.status.lower().replace('_', '-'))
-    else:
-        form = ProjectForm(instance=project)
-    return render(request, 'employee/project_form.html', {'form': form, 'action': 'Edit', 'project': project})
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def assign_employees_to_project(request, project_id):
-    project = get_object_or_404(Project, id=project_id)
-    if request.method == 'POST':
-        employee_ids = request.POST.getlist('employees')
-        if employee_ids:
-            valid_employees = Employee.objects.filter(eID__in=employee_ids)
-            project.employees.set(valid_employees)
-        else:
-            project.employees.clear()
-        project.save()
-        messages.success(request, 'Employees assigned successfully!')
-        return redirect('project_list', project.status.lower().replace('_', '-'))
-    # Get only employees (not admins/HR)
-    employee_eids = UserProfile.objects.filter(role='EMPLOYEE').values_list('user__username', flat=True)
-    employees = Employee.objects.filter(eID__in=employee_eids)
-    return render(request, 'employee/assign_employees.html', {'project': project, 'employees': employees})
-
-@login_required
-def mark_project_complete(request, project_id):
-    project = get_object_or_404(Project, id=project_id)
-    user_profile = get_object_or_404(UserProfile, user=request.user)
-    # Only allow if user is assigned to this project
-    if user_profile.role == 'EMPLOYEE' and project.employees.filter(eID=request.user.username).exists():
-        project.status = 'COMPLETED'
-        project.save()
-        messages.success(request, 'Project marked as complete!')
-    else:
-        messages.error(request, 'You are not assigned to this project or not allowed to complete it.')
-    return redirect('project_list', 'ongoing')
-
-@login_required
-@role_required(['EMPLOYEE'])
-def my_projects(request):
-    employee = get_object_or_404(Employee, eID=request.user.username)
-    ongoing_projects = employee.projects.filter(status='ONGOING').order_by('-start_date')
-    upcoming_projects = employee.projects.filter(status='UPCOMING').order_by('-start_date')
-    return render(request, 'employee/my_projects.html', {
-        'employee': employee,
-        'ongoing_projects': ongoing_projects,
-        'upcoming_projects': upcoming_projects
-    })
-
-@login_required
-@role_required(['ADMIN', 'HR', 'EMPLOYEE'])
-def project_detail(request, project_id):
-    project = get_object_or_404(Project, id=project_id)
-    employees = project.employees.all()
-    return render(request, 'employee/project_detail.html', {'project': project, 'employees': employees})
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def delete_project(request, project_id):
-    project = get_object_or_404(Project, id=project_id)
-    if request.method == 'POST':
-        project.delete()
-        messages.success(request, 'Project deleted successfully!')
-        return redirect('project_list', 'ongoing')
-    return render(request, 'employee/project_confirm_delete.html', {'project': project})
-
-# API Serializers
-class EmployeeSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Employee
-        fields = ['eID', 'firstName', 'lastName', 'email', 'designation']
-
-class ProjectSerializer(serializers.ModelSerializer):
-    employees = EmployeeSerializer(many=True, read_only=True)
-    class Meta:
-        model = Project
-        fields = ['id', 'name', 'status', 'start_date', 'end_date', 'description', 'employees']
-
-# API ViewSets
-class EmployeeViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Employee.objects.all()
-    serializer_class = EmployeeSerializer
-
-class ProjectViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Project.objects.all()
-    serializer_class = ProjectSerializer
-
-@login_required
-def employee_profile_forms(request):
-    """View to handle all employee profile forms"""
-    employee = get_object_or_404(Employee, eID=request.user.username)
-    
-    # Initialize forms
-    employee_info_form = EmployeeInformationForm(instance=getattr(employee, 'employeeinformation', None))
-    id_card_form = IDCardForm(instance=getattr(employee, 'idcard', None))
-    wifi_access_form = WiFiAccessForm(instance=getattr(employee, 'wifiaccess', None))
-    parking_form = ParkingDetailsForm(instance=getattr(employee, 'parkingdetails', None))
-    insurance_form = InsuranceDetailsForm(instance=getattr(employee, 'insurancedetails', None))
-    
-    if request.method == 'POST':
-        form_type = request.POST.get('form_type')
-        
-        if form_type == 'employee_info':
-            form = EmployeeInformationForm(request.POST, instance=getattr(employee, 'employeeinformation', None))
-            if form.is_valid():
-                info = form.save(commit=False)
-                info.employee = employee
-                info.save()
-                messages.success(request, 'Employee information updated successfully!')
-                return redirect('employee_profile_forms')
-                
-        elif form_type == 'id_card':
-            form = IDCardForm(request.POST, instance=getattr(employee, 'idcard', None))
-            if form.is_valid():
-                id_card = form.save(commit=False)
-                id_card.employee = employee
-                id_card.save()
-                messages.success(request, 'ID Card information updated successfully!')
-                return redirect('employee_profile_forms')
-                
-        elif form_type == 'wifi_access':
-            form = WiFiAccessForm(request.POST, instance=getattr(employee, 'wifiaccess', None))
-            if form.is_valid():
-                wifi = form.save(commit=False)
-                wifi.employee = employee
-                wifi.save()
-                messages.success(request, 'WiFi access information updated successfully!')
-                return redirect('employee_profile_forms')
-                
-        elif form_type == 'parking':
-            form = ParkingDetailsForm(request.POST, instance=getattr(employee, 'parkingdetails', None))
-            if form.is_valid():
-                parking = form.save(commit=False)
-                parking.employee = employee
-                parking.save()
-                messages.success(request, 'Parking details updated successfully!')
-                return redirect('employee_profile_forms')
-                
-        elif form_type == 'insurance':
-            form = InsuranceDetailsForm(request.POST, instance=getattr(employee, 'insurancedetails', None))
-            if form.is_valid():
-                insurance = form.save(commit=False)
-                insurance.employee = employee
-                insurance.save()
-                messages.success(request, 'Insurance details updated successfully!')
-                return redirect('employee_profile_forms')
-    
-    # Determine if each section is editable based on allow_edit
-    def get_is_editable(form_type):
-        req = ProfileUpdateRequest.objects.filter(
-            employee=employee,
-            proposed_changes__has_key=form_type
-        ).order_by('-submitted_at').first()
-        return getattr(req, 'allow_edit', False) if req else False
-
-    form_statuses = {
-        'employee_info': {'is_editable': get_is_editable('employee_info')},
-        'id_card': {'is_editable': get_is_editable('id_card')},
-        'wifi_access': {'is_editable': get_is_editable('wifi_access')},
-        'parking': {'is_editable': get_is_editable('parking')},
-        'insurance': {'is_editable': get_is_editable('insurance')},
-    }
-
-    context = {
-        'employee': employee,
-        'employee_info_form': employee_info_form,
-        'id_card_form': id_card_form,
-        'wifi_access_form': wifi_access_form,
-        'parking_form': parking_form,
-        'insurance_form': insurance_form,
-        'form_statuses': form_statuses,
-    }
-    return render(request, 'employee/profile_forms.html', context)
-
-@login_required
-@role_required(['HR', 'ADMIN'])
-def review_employee_forms(request, employee_id):
-    """View for HR/Admin to review employee forms"""
-    employee = get_object_or_404(Employee, eID=employee_id)
-    
-    # Get all forms data
-    employee_info = getattr(employee, 'employeeinformation', None)
-    id_card = getattr(employee, 'idcard', None)
-    wifi_access = getattr(employee, 'wifiaccess', None)
-    parking = getattr(employee, 'parkingdetails', None)
-    insurance = getattr(employee, 'insurancedetails', None)
-    
-    if request.method == 'POST':
-        form_type = request.POST.get('form_type')
-        action = request.POST.get('action')
-
-        if action == 'approve':
-            # Create or update ProfileUpdateRequest
-            ProfileUpdateRequest.objects.create(
-                employee=employee,
-                requested_by=request.user,
-                proposed_changes={form_type: 'approved'},
-                status='APPROVED',
-                reviewed_by=request.user,
-                reviewed_at=timezone.now(),
-                allow_edit=False
-            )
-            messages.success(request, f'{form_type.replace("_", " ").title()} approved successfully!')
-        elif action == 'reject':
-            ProfileUpdateRequest.objects.create(
-                employee=employee,
-                requested_by=request.user,
-                proposed_changes={form_type: 'rejected'},
-                status='REJECTED',
-                reviewed_by=request.user,
-                reviewed_at=timezone.now(),
-                review_comments=request.POST.get('comments', ''),
-                allow_edit=False
-            )
-            messages.warning(request, f'{form_type.replace("_", " ").title()} rejected.')
-        elif action == 'allow_edit':
-            # Set allow_edit=True for the latest ProfileUpdateRequest for this form_type
-            latest_req = ProfileUpdateRequest.objects.filter(
-                employee=employee,
-                proposed_changes__has_key=form_type
-            ).order_by('-submitted_at').first()
-            if latest_req:
-                latest_req.allow_edit = True
-                latest_req.save()
-                messages.success(request, f'Re-upload enabled for {form_type.replace("_", " ").title()}!')
-            else:
-                messages.error(request, f'No submission found to enable re-upload for {form_type.replace("_", " ").title()}.')
-            return redirect('review_employee_forms', employee_id=employee_id)
-        return redirect('review_employee_forms', employee_id=employee_id)
-
-    # Prepare form_statuses for button state
-    def get_allow_edit(form_type):
-        req = ProfileUpdateRequest.objects.filter(
-            employee=employee,
-            proposed_changes__has_key=form_type
-        ).order_by('-submitted_at').first()
-        return {'allow_edit': getattr(req, 'allow_edit', False) if req else False}
-
-    form_statuses = {
-        'employee_info': get_allow_edit('employee_info'),
-        'id_card': get_allow_edit('id_card'),
-        'wifi_access': get_allow_edit('wifi_access'),
-        'parking': get_allow_edit('parking'),
-        'insurance': get_allow_edit('insurance'),
-    }
-
-    context = {
-        'employee': employee,
-        'employee_info': employee_info,
-        'id_card': id_card,
-        'wifi_access': wifi_access,
-        'parking': parking,
-        'insurance': insurance,
-        'form_statuses': form_statuses,
-    }
-    return render(request, 'employee/review_forms.html', context)
-
-@login_required
-@role_required(['HR', 'ADMIN'])
-def employee_validation_list(request):
-    """View for HR/Admin to list and validate employee information"""
-    # Get all employees with their validation status
-    employees = Employee.objects.all().order_by('-joinDate')
-    
-    # Add validation status to each employee
-    for employee in employees:
-        # Check if employee has any pending updates
-        pending_updates = ProfileUpdateRequest.objects.filter(
-            employee=employee,
-            status='PENDING'
-        ).exists()
-        
-        # Check if all required information is provided
-        has_employee_info = hasattr(employee, 'employeeinformation')
-        has_id_card = hasattr(employee, 'idcard')
-        has_wifi_access = hasattr(employee, 'wifiaccess')
-        has_parking = hasattr(employee, 'parkingdetails')
-        has_insurance = hasattr(employee, 'insurancedetails')
-        
-        # Determine overall validation status
-        if pending_updates:
-            employee.validation_status = 'PENDING'
-        elif all([has_employee_info, has_id_card, has_wifi_access, has_parking, has_insurance]):
-            employee.validation_status = 'APPROVED'
-        else:
-            employee.validation_status = 'INCOMPLETE'
-            
-        # Get last update time
-        last_update = ProfileUpdateRequest.objects.filter(
-            employee=employee
-        ).order_by('-reviewed_at').first()
-        
-        employee.last_updated = last_update.reviewed_at if last_update else employee.joinDate
-    
-    context = {
-        'employees': employees,
-        'page_title': 'Employee Information Validation',
-        'active_page': 'validation'
-    }
-    return render(request, 'employee/employee_validation.html', context)
-
-@login_required(login_url='/')
-@role_required(['ADMIN', 'HR'])
-def employee_documents(request, employee_id):
-    """View for displaying and verifying employee documents"""
-    employee = get_object_or_404(Employee, eID=employee_id)
-    documents = Document.objects.filter(employee=employee).order_by('-uploaded_at')
-    
-    if request.method == 'POST':
-        doc_id = request.POST.get('doc_id')
-        status = request.POST.get('status')
-        comments = request.POST.get('comments', '')
-        allow_reupload = request.POST.get('allow_reupload')
-        
-        document = get_object_or_404(Document, id=doc_id)
-        if allow_reupload == 'true':
-            document.allow_reupload = True
-            document.save()
-            messages.success(request, "Re-upload enabled for this document!")
-            return redirect('employee_documents', employee_id=employee_id)
-        else:
-            document.status = status
-            document.verified_by = request.user
-            document.verified_at = timezone.now()
-            document.comments = comments
-            document.save()
-            
-            AuditLog.objects.create(
-                user=request.user,
-                action=f"Document Verification - {status}",
-                details=f"Document {doc_id} verified for {employee.eID}"
-            )
-            
-            messages.success(request, "Document verification updated successfully!")
-            return redirect('employee_documents', employee_id=employee_id)
-    
-    context = {
-        'employee': employee,
-        'documents': documents,
-        'page_title': f'Documents - {employee.firstName} {employee.lastName}',
-        'active_page': 'documents'
-    }
-    return render(request, 'employee/employee_documents.html', context)
-
-@login_required
-def create_notice(request):
-    from employee.models import NOTICE_TAGS
-    if request.method == 'POST':
-        title = request.POST.get('title')
-        description = request.POST.get('description')
-        tag = request.POST.get('tag', 'GENERAL')
-        notice = Notice.objects.create(
-            Id=f'NTC-{uuid.uuid4().hex[:8].upper()}',
-            title=title,
-            description=description,
-            publishDate=timezone.now(),
-            tag=tag,
-            created_by=request.user
-        )
-        messages.success(request, 'Notice posted successfully!')
-        return redirect('notice')
-    return render(request, 'employee/create_notice.html', {'tags': NOTICE_TAGS})
-
-@login_required
-def delete_notice(request, id):
-    notice = get_object_or_404(Notice, Id=id)
-    user_profile = UserProfile.objects.get(user=request.user)
-    # Only creator or HR/Admin can delete
-    if notice.created_by == request.user or user_profile.role in ['ADMIN', 'HR']:
-        notice.delete()
-        messages.success(request, 'Notice deleted successfully!')
-    else:
-        messages.error(request, 'You do not have permission to delete this notice.')
-    return redirect('notice')
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def admin_panel(request):
-    """Protected Django admin panel access."""
-    if not request.user.is_staff:
-        messages.error(request, "You don't have permission to access the admin panel.")
+        messages.error(request, "Employee record not found.")
         return redirect('dashboard')
-    from django.contrib import admin
-    return admin.site.index(request)
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def create_employee(request):
-    if request.method == 'POST':
-        eid = request.POST.get('eid')
-        first_name = request.POST.get('first_name')
-        middle_name = request.POST.get('middle_name')
-        last_name = request.POST.get('last_name')
-        phone = request.POST.get('phone')
-        email = request.POST.get('email')
-        addhar = request.POST.get('addhar')
-        dob = request.POST.get('dob')
-        designation = request.POST.get('designation')
-        salary = request.POST.get('salary')
-        join_date = request.POST.get('join_date')
-        password = request.POST.get('password')
-        # Create User
-        if User.objects.filter(username=eid).exists():
-            messages.error(request, 'A user with this Employee ID already exists.')
-            return redirect('create_employee')
-        user = User.objects.create_user(username=eid, email=email, password=password, first_name=first_name, last_name=last_name)
-        # Create Employee
-        Employee.objects.create(
-            eID=eid,
-            firstName=first_name,
-            middleName=middle_name,
-            lastName=last_name,
-            phoneNo=phone,
-            email=email,
-            addharNo=addhar,
-            dOB=dob,
-            designation=designation,
-            salary=salary,
-            joinDate=join_date
-        )
-        # Create UserProfile
-        UserProfile.objects.create(user=user, role='EMPLOYEE', profile_completion=0)
-        messages.success(request, 'Employee and account created successfully!')
-        return redirect('admin_dashboard')
-    return render(request, 'employee/create_employee.html', {'designations': designations_opt})
-
-def generate_company_email(first_name, last_name):
-    # Generate a random string to ensure uniqueness
-    random_str = ''.join(random.choices(string.ascii_lowercase + string.digits, k=4))
-    return f"{first_name.lower()}.{last_name.lower()}.{random_str}@company.com"
-
-@require_http_methods(["GET"])
-def initiate_auth(request):
-    """Initiate the OAuth flow"""
-    return utils_initiate_auth(request)
-
-@require_http_methods(["GET"])
-def auth_callback(request):
-    """Handle the OAuth callback"""
-    return utils_auth_callback(request)
-
-@require_http_methods(["GET"])
-def test_email(request):
-    """Test email sending functionality"""
-    test_email_sending(request)
-    return redirect('dashboard')
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def asset_dashboard(request):
-    total_assets = Asset.objects.count()
-    available_assets = Asset.objects.filter(status='AVAILABLE').count()
-    assigned_assets = Asset.objects.filter(status='ASSIGNED').count()
-    maintenance_assets = Asset.objects.filter(status='MAINTENANCE').count()
-    
-    recent_assignments = AssetAssignment.objects.filter(is_returned=False).order_by('-assigned_date')[:5]
-    categories = AssetCategory.objects.annotate(asset_count=Count('asset'))
-    
-    context = {
-        'total_assets': total_assets,
-        'available_assets': available_assets,
-        'assigned_assets': assigned_assets,
-        'maintenance_assets': maintenance_assets,
-        'recent_assignments': recent_assignments,
-        'categories': categories,
-    }
-    return render(request, 'employee/asset_dashboard.html', context)
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def asset_list(request):
-    assets = Asset.objects.all().order_by('-created_at')
-    return render(request, 'employee/asset_list.html', {'assets': assets})
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def asset_detail(request, asset_id):
-    asset = get_object_or_404(Asset, asset_id=asset_id)
-    assignments = AssetAssignment.objects.filter(asset=asset).order_by('-assigned_date')
-    return render(request, 'employee/asset_detail.html', {
-        'asset': asset,
-        'assignments': assignments
-    })
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def asset_create(request):
-    if request.method == 'POST':
-        # Generate unique asset ID
-        last_asset = Asset.objects.order_by('-asset_id').first()
-        if last_asset:
-            last_num = int(last_asset.asset_id[3:])
-            new_num = str(last_num + 1).zfill(6)
-            new_asset_id = f"AST{new_num}"
-        else:
-            new_asset_id = "AST000001"
-            
-        asset = Asset.objects.create(
-            asset_id=new_asset_id,
-            name=request.POST['name'],
-            category_id=request.POST['category'],
-            description=request.POST.get('description', ''),
-            serial_number=request.POST.get('serial_number', ''),
-            purchase_date=request.POST.get('purchase_date'),
-            purchase_cost=request.POST.get('purchase_cost'),
-            condition=request.POST['condition'],
-            notes=request.POST.get('notes', '')
-        )
-        messages.success(request, 'Asset created successfully!')
-        return redirect('asset_detail', asset_id=asset.asset_id)
-    
-    categories = AssetCategory.objects.all()
-    return render(request, 'employee/asset_form.html', {'categories': categories})
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def asset_edit(request, asset_id):
-    asset = get_object_or_404(Asset, asset_id=asset_id)
-    if request.method == 'POST':
-        asset.name = request.POST['name']
-        asset.category_id = request.POST['category']
-        asset.description = request.POST.get('description', '')
-        asset.serial_number = request.POST.get('serial_number', '')
-        asset.purchase_date = request.POST.get('purchase_date')
-        asset.purchase_cost = request.POST.get('purchase_cost')
-        asset.condition = request.POST['condition']
-        asset.status = request.POST['status']
-        asset.notes = request.POST.get('notes', '')
-        asset.save()
-        messages.success(request, 'Asset updated successfully!')
-        return redirect('asset_detail', asset_id=asset.asset_id)
-    
-    categories = AssetCategory.objects.all()
-    return render(request, 'employee/asset_form.html', {
-        'asset': asset,
-        'categories': categories
-    })
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def asset_assign(request, asset_id):
-    asset = get_object_or_404(Asset, asset_id=asset_id)
-    if request.method == 'POST':
-        if asset.status != 'AVAILABLE':
-            messages.error(request, 'This asset is not available for assignment.')
-            return redirect('asset_detail', asset_id=asset.asset_id)
-            
-        assignment = AssetAssignment.objects.create(
-            asset=asset,
-            employee_id=request.POST['employee'],
-            assigned_date=request.POST['assigned_date'],
-            return_date=request.POST.get('return_date'),
-            assigned_by=request.user,
-            assignment_notes=request.POST.get('notes', '')
-        )
-        messages.success(request, 'Asset assigned successfully!')
-        return redirect('asset_detail', asset_id=asset.asset_id)
-    
-    employees = Employee.objects.all()
-    return render(request, 'employee/asset_assign.html', {
-        'asset': asset,
-        'employees': employees
-    })
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def asset_return(request, assignment_id):
-    assignment = get_object_or_404(AssetAssignment, id=assignment_id)
-    if request.method == 'POST':
-        assignment.is_returned = True
-        assignment.return_notes = request.POST.get('return_notes', '')
-        assignment.save()
-        messages.success(request, 'Asset returned successfully!')
-        return redirect('asset_detail', asset_id=assignment.asset.asset_id)
-    
-    return render(request, 'employee/asset_return.html', {'assignment': assignment})
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def asset_delete(request, asset_id):
-    asset = get_object_or_404(Asset, asset_id=asset_id)
-    
-    if request.method == 'POST':
-        # Check if asset can be deleted (not assigned)
-        if asset.status == 'ASSIGNED':
-            messages.error(request, 'Cannot delete an assigned asset. Please return the asset first.')
-            return redirect('asset_detail', asset_id=asset.asset_id)
-        
-        asset.delete()
-        messages.success(request, 'Asset deleted successfully!')
-        return redirect('asset_list')
-    
-    return render(request, 'employee/asset_delete.html', {'asset': asset})
-
-@login_required
-@user_passes_test(is_hr_or_admin)
-def attendance_reports(request):
-    # Get date range
-    end_date = timezone.now().date()
-    start_date = end_date - timedelta(days=30)
-    
-    # Get attendance statistics
-    attendance_stats = Attendance.objects.filter(
-        date__range=[start_date, end_date]
-    ).aggregate(
-        total_present=Count('id', filter=Q(status='PRESENT')),
-        total_late=Count('id', filter=Q(is_late=True)),
-        total_absent=Count('id', filter=Q(status='ABSENT')),
-        total_half_day=Count('id', filter=Q(status='HALF_DAY')),
-        avg_overtime=Avg('overtime_hours')
-    )
-    
-    # Get daily attendance trends
-    daily_trends = Attendance.objects.filter(
-        date__range=[start_date, end_date]
-    ).values('date').annotate(
-        present=Count('id', filter=Q(status='PRESENT')),
-        late=Count('id', filter=Q(is_late=True)),
-        absent=Count('id', filter=Q(status='ABSENT'))
-    ).order_by('date')
-    
-    # Get monthly attendance summary
-    monthly_summary = Attendance.objects.filter(
-        date__range=[start_date, end_date]
-    ).annotate(
-        month=TruncMonth('date')
-    ).values('month').annotate(
-        present=Count('id', filter=Q(status='PRESENT')),
-        late=Count('id', filter=Q(is_late=True)),
-        absent=Count('id', filter=Q(status='ABSENT'))
-    ).order_by('month')
-    
-    # Get employee-wise attendance summary
-    employee_attendance = Employee.objects.annotate(
-        present=Count('eID', filter=Q(
-            attendance__date__range=[start_date, end_date],
-            attendance__status='PRESENT'
-        )),
-        late=Count('eID', filter=Q(
-            attendance__date__range=[start_date, end_date],
-            attendance__is_late=True
-        )),
-        absent=Count('eID', filter=Q(
-            attendance__date__range=[start_date, end_date],
-            attendance__status='ABSENT'
-        ))
-    ).order_by('-present')
-    
-    context = {
-        'attendance_stats': attendance_stats,
-        'daily_trends': list(daily_trends),
-        'monthly_summary': list(monthly_summary),
-        'employee_attendance': employee_attendance,
-        'start_date': start_date,
-        'end_date': end_date
-    }
-    
-    return render(request, 'employee/attendance_reports.html', context)
-
-@login_required
-@user_passes_test(is_hr_or_admin)
-def employee_attendance_detail(request, employee_id):
-    # Get date range
-    end_date = timezone.now().date()
-    start_date = end_date - timedelta(days=30)
-
-    # Get employee
-    employee = get_object_or_404(Employee, eID=employee_id)
-
-    # Get attendance records
-    attendance_records = Attendance.objects.filter(
-        eId=employee_id,
-        date__range=[start_date, end_date]
-    ).order_by('-date')
-
-    # Calculate attendance statistics
-    attendance_stats = {
-        'present': attendance_records.filter(status='PRESENT').count(),
-        'late': attendance_records.filter(is_late=True).count(),
-        'absent': attendance_records.filter(status='ABSENT').count(),
-        'total_overtime': attendance_records.aggregate(
-            total=Sum('overtime_hours')
-        )['total'] or 0
-    }
-
-    # Prepare data for charts
-    attendance_data = attendance_records.annotate(
-        work_hours=models.F('overtime_hours') + 8  # Assuming 8 hours work day
-    ).values('date', 'work_hours', 'overtime_hours')
-    
-    context = {
-        'employee': employee,
-        'attendance_records': attendance_records,
-        'attendance_stats': attendance_stats,
-        'attendance_data': json.dumps(list(attendance_data), default=str),
-        'start_date': start_date,
-        'end_date': end_date
-    }
-
-    return render(request, 'employee/employee_attendance_detail.html', context)
-
-@login_required
-@role_required(['ADMIN', 'HR'])
-def export_attendance(request):
-    # Get filter parameters
-    date_from = request.GET.get('date_from')
-    date_to = request.GET.get('date_to')
-    employee_id = request.GET.get('employee_id')
-    status = request.GET.get('status')
-    
-    # Get attendance records
-    attendance_records = Attendance.objects.all()
-    
-    # Apply filters
-    if date_from:
-        attendance_records = attendance_records.filter(date__gte=date_from)
-    if date_to:
-        attendance_records = attendance_records.filter(date__lte=date_to)
-    if employee_id:
-        attendance_records = attendance_records.filter(eId=employee_id)
-    if status:
-        attendance_records = attendance_records.filter(status=status)
-    
-    # Order records
-    attendance_records = attendance_records.order_by('date', 'eId')
-    
-    # Create CSV response
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="attendance_report.csv"'
-    
-    writer = csv.writer(response)
-    writer.writerow(['Date', 'Employee ID', 'Time In', 'Time Out', 'Status', 'Overtime Hours', 'Location', 'Is Remote', 'Notes'])
-    
-    for record in attendance_records:
-        writer.writerow([
-            record.date,
-            record.eId,
-            record.time_in,
-            record.time_out,
-            record.status,
-            record.overtime_hours,
-            record.location,
-            record.is_remote,
-            record.notes
-        ])
-    
-    return response
 

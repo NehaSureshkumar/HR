@@ -1,256 +1,127 @@
-{% extends 'base.html' %}
+{% extends 'employee/base.html' %}
+{% load static %}
+
+{% block title %}Manage Attendance - Employee Management System{% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <div class="row">
-        <!-- Filters -->
-        <div class="col-12 mb-4">
-            <div class="card">
-                <div class="card-body">
-                    <form method="get" class="row g-3">
-                        <div class="col-md-3">
-                            <label for="employee" class="form-label">Employee</label>
-                            <select name="employee" id="employee" class="form-select">
-                                <option value="">All Employees</option>
-                                {% for emp in employees %}
-                                <option value="{{ emp.id }}" {% if selected_employee == emp.id %}selected{% endif %}>
-                                    {{ emp.get_full_name }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label for="date_from" class="form-label">Date From</label>
-                            <input type="date" name="date_from" id="date_from" class="form-control" value="{{ date_from }}">
-                        </div>
-                        <div class="col-md-3">
-                            <label for="date_to" class="form-label">Date To</label>
-                            <input type="date" name="date_to" id="date_to" class="form-control" value="{{ date_to }}">
-                        </div>
-                        <div class="col-md-3">
-                            <label for="status" class="form-label">Status</label>
-                            <select name="status" id="status" class="form-select">
-                                <option value="">All Status</option>
-                                <option value="PRESENT" {% if selected_status == 'PRESENT' %}selected{% endif %}>Present</option>
-                                <option value="ABSENT" {% if selected_status == 'ABSENT' %}selected{% endif %}>Absent</option>
-                                <option value="HALF_DAY" {% if selected_status == 'HALF_DAY' %}selected{% endif %}>Half Day</option>
-                                <option value="LATE" {% if selected_status == 'LATE' %}selected{% endif %}>Late</option>
-                                <option value="PENDING" {% if selected_status == 'PENDING' %}selected{% endif %}>Pending Approval</option>
-                            </select>
-                        </div>
-                        <div class="col-12">
-                            <button type="submit" class="btn btn-primary">Apply Filters</button>
-                            <button type="button" class="btn btn-success" onclick="exportAttendance()">Export to Excel</button>
-                        </div>
-                    </form>
+<div class="container mx-auto px-4 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Shift Allocation Section -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Allocate Shift</h2>
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="allocate_shift">
+                
+                <div>
+                    <label for="employee" class="block text-sm font-medium text-gray-700">Employee</label>
+                    <select name="employee" id="employee" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="">Select Employee</option>
+                        {% for employee in employees %}
+                        <option value="{{ employee.id }}">{{ employee.firstName }} {{ employee.lastName }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
-            </div>
+                
+                <div>
+                    <label for="shift" class="block text-sm font-medium text-gray-700">Shift</label>
+                    <select name="shift" id="shift" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        <option value="">Select Shift</option>
+                        {% for shift in shifts %}
+                        <option value="{{ shift.id }}">{{ shift.name }} ({{ shift.start_time|time:"H:i" }} - {{ shift.end_time|time:"H:i" }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="start_date" class="block text-sm font-medium text-gray-700">Start Date</label>
+                    <input type="date" name="start_date" id="start_date" required 
+                           min="{{ start_date|date:'Y-m-d' }}" max="{{ end_date|date:'Y-m-d' }}"
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                
+                <button type="submit" class="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                    Allocate Shift
+                </button>
+            </form>
         </div>
 
-        <!-- Attendance List -->
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="card-title mb-0">Attendance Records</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Employee</th>
-                                    <th>Date</th>
-                                    <th>Clock In</th>
-                                    <th>Clock Out</th>
-                                    <th>Total Hours</th>
-                                    <th>Status</th>
-                                    <th>Type</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for record in attendance_records %}
-                                <tr>
-                                    <td>{{ record.employee.get_full_name }}</td>
-                                    <td>{{ record.date|date:"Y-m-d" }}</td>
-                                    <td>{{ record.clock_in|time:"H:i" }}</td>
-                                    <td>{{ record.clock_out|time:"H:i"|default:"-" }}</td>
-                                    <td>{{ record.total_hours|default:"-" }}</td>
-                                    <td>
-                                        <span class="badge {% if record.status == 'PRESENT' %}bg-success
-                                                          {% elif record.status == 'ABSENT' %}bg-danger
-                                                          {% elif record.status == 'HALF_DAY' %}bg-warning
-                                                          {% elif record.status == 'LATE' %}bg-info
-                                                          {% else %}bg-secondary{% endif %}">
-                                            {{ record.status }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="badge {% if record.is_manual %}bg-warning{% else %}bg-primary{% endif %}">
-                                            {{ record.is_manual|yesno:"Manual,Auto" }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div class="btn-group">
-                                            <button type="button" class="btn btn-sm btn-info" 
-                                                    onclick="viewDetails('{{ record.id }}')">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-                                            {% if record.status == 'PENDING' %}
-                                            <button type="button" class="btn btn-sm btn-success" 
-                                                    onclick="approveRecord('{{ record.id }}')">
-                                                <i class="fas fa-check"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-sm btn-danger" 
-                                                    onclick="rejectRecord('{{ record.id }}')">
-                                                <i class="fas fa-times"></i>
-                                            </button>
-                                            {% endif %}
-                                            <button type="button" class="btn btn-sm btn-primary" 
-                                                    onclick="editRecord('{{ record.id }}')">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="8" class="text-center">No records found</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Pagination -->
-                    {% if attendance_records.has_other_pages %}
-                    <nav aria-label="Page navigation" class="mt-4">
-                        <ul class="pagination justify-content-center">
-                            {% if attendance_records.has_previous %}
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ attendance_records.previous_page_number }}">Previous</a>
-                            </li>
-                            {% endif %}
-
-                            {% for num in attendance_records.paginator.page_range %}
-                            <li class="page-item {% if attendance_records.number == num %}active{% endif %}">
-                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
-                            </li>
-                            {% endfor %}
-
-                            {% if attendance_records.has_next %}
-                            <li class="page-item">
-                                <a class="page-link" href="?page={{ attendance_records.next_page_number }}">Next</a>
-                            </li>
-                            {% endif %}
-                        </ul>
-                    </nav>
-                    {% endif %}
-                </div>
+        <!-- Attendance Records Section -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">Attendance Records</h2>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time In</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time Out</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Overtime</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for record in attendance_records %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{ record.date|date:"M d, Y" }}
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-900">
+                                {{ record.eId.firstName }} {{ record.eId.lastName }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{ record.time_in|time:"H:i" }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{ record.time_out|time:"H:i"|default:"-" }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                    {% if record.status == 'Present' %}bg-green-100 text-green-800
+                                    {% elif record.status == 'Late' %}bg-yellow-100 text-yellow-800
+                                    {% else %}bg-red-100 text-red-800{% endif %}">
+                                    {{ record.status }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{ record.overtime_hours|floatformat:1|default:"0.0" }} hrs
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {% if record.status == 'Pending' %}
+                                <form method="post" class="inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="approve_attendance">
+                                    <input type="hidden" name="attendance_id" value="{{ record.id }}">
+                                    <input type="hidden" name="status" value="Present">
+                                    <button type="submit" class="text-green-600 hover:text-green-900 mr-2">
+                                        Approve
+                                    </button>
+                                </form>
+                                <form method="post" class="inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="approve_attendance">
+                                    <input type="hidden" name="attendance_id" value="{{ record.id }}">
+                                    <input type="hidden" name="status" value="Absent">
+                                    <button type="submit" class="text-red-600 hover:text-red-900">
+                                        Reject
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="px-6 py-4 text-center text-gray-500">
+                                No attendance records found for this month.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 </div>
-
-<!-- Modal for Record Details -->
-<div class="modal fade" id="recordModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Attendance Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" id="recordDetails">
-                <!-- Content will be loaded dynamically -->
-            </div>
-        </div>
-    </div>
-</div>
-
-{% block extra_js %}
-<script>
-    function viewDetails(recordId) {
-        fetch(`/attendance/record/${recordId}/`)
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('recordDetails').innerHTML = `
-                    <div class="mb-3">
-                        <strong>Employee:</strong> ${data.employee_name}
-                    </div>
-                    <div class="mb-3">
-                        <strong>Date:</strong> ${data.date}
-                    </div>
-                    <div class="mb-3">
-                        <strong>Clock In:</strong> ${data.clock_in}
-                    </div>
-                    <div class="mb-3">
-                        <strong>Clock Out:</strong> ${data.clock_out || '-'}
-                    </div>
-                    <div class="mb-3">
-                        <strong>Total Hours:</strong> ${data.total_hours || '-'}
-                    </div>
-                    <div class="mb-3">
-                        <strong>Status:</strong> ${data.status}
-                    </div>
-                    ${data.reason ? `
-                    <div class="mb-3">
-                        <strong>Reason:</strong> ${data.reason}
-                    </div>
-                    ` : ''}
-                `;
-                new bootstrap.Modal(document.getElementById('recordModal')).show();
-            });
-    }
-
-    function approveRecord(recordId) {
-        if (confirm('Are you sure you want to approve this record?')) {
-            fetch(`/attendance/record/${recordId}/approve/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                },
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert(data.message);
-                }
-            });
-        }
-    }
-
-    function rejectRecord(recordId) {
-        const reason = prompt('Please enter rejection reason:');
-        if (reason) {
-            fetch(`/attendance/record/${recordId}/reject/`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ reason: reason }),
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert(data.message);
-                }
-            });
-        }
-    }
-
-    function editRecord(recordId) {
-        window.location.href = `/attendance/record/${recordId}/edit/`;
-    }
-
-    function exportAttendance() {
-        const params = new URLSearchParams(window.location.search);
-        window.location.href = `/attendance/export/?${params.toString()}`;
-    }
-</script>
-{% endblock %}
 {% endblock %} 

@@ -1,0 +1,118 @@
+{% extends 'employee/base.html' %}
+{% load static %}
+
+{% block title %}{{ employee.firstName }} {{ employee.lastName }} - Attendance Details{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/attendance.css' %}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800">{{ employee.firstName }} {{ employee.lastName }}</h1>
+            <p class="text-gray-600">Employee ID: {{ employee.eID }}</p>
+        </div>
+        <div class="flex space-x-4">
+            <a href="{% url 'attendance_reports' %}" class="action-button secondary">
+                <i class="fas fa-arrow-left mr-2"></i>Back to Reports
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="attendance-stats">
+        <div class="stat-card present">
+            <div class="stat-value">{{ attendance_stats.present }}</div>
+            <div class="stat-label">Present Days</div>
+        </div>
+        <div class="stat-card late">
+            <div class="stat-value">{{ attendance_stats.late }}</div>
+            <div class="stat-label">Late Days</div>
+        </div>
+        <div class="stat-card absent">
+            <div class="stat-value">{{ attendance_stats.absent }}</div>
+            <div class="stat-label">Absent Days</div>
+        </div>
+        <div class="stat-card overtime">
+            <div class="stat-value">{{ attendance_stats.total_overtime|floatformat:1 }}</div>
+            <div class="stat-label">Total Overtime Hours</div>
+        </div>
+    </div>
+
+    <!-- Attendance Chart -->
+    <div class="attendance-card mb-6">
+        <h3 class="text-lg font-semibold mb-4">Attendance Trend (Last 30 Days)</h3>
+        <canvas id="attendanceChart" height="100"></canvas>
+    </div>
+
+    <!-- Attendance Records -->
+    <div class="attendance-card">
+        <h3 class="text-lg font-semibold mb-4">Attendance Records</h3>
+        <div class="overflow-x-auto">
+            <table class="attendance-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Time In</th>
+                        <th>Time Out</th>
+                        <th>Status</th>
+                        <th>Overtime</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for record in attendance_records %}
+                    <tr>
+                        <td>{{ record.date|date:"M d, Y" }}</td>
+                        <td>{{ record.time_in|time:"H:i" }}</td>
+                        <td>{{ record.time_out|time:"H:i"|default:"--:--" }}</td>
+                        <td>
+                            <span class="status-badge {{ record.status|lower }}">
+                                {{ record.status }}
+                            </span>
+                        </td>
+                        <td>{{ record.overtime|floatformat:1|default:"0.0" }} hrs</td>
+                        <td>{{ record.notes|default:"-" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    // Attendance Trend Chart
+    const ctx = document.getElementById('attendanceChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ attendance_trend|safe }}.map(item => item.date),
+            datasets: [{
+                label: 'Work Hours',
+                data: {{ attendance_trend|safe }}.map(item => item.hours),
+                borderColor: 'rgb(59, 130, 246)',
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Hours'
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %} 

@@ -42,11 +42,10 @@ urlpatterns = [
     path('work/<str:wid>/delete/', views.deletework, name="deletework"),
     
     # Attendance
-    path('attendance/', views.attendance_list, name="attendance_list"),
+    path('attendance/', views.attendance_list, name='attendance_list'),
     path('attendance/clock-in/', views.clock_in, name='clock_in'),
     path('attendance/clock-out/', views.clock_out, name='clock_out'),
-    path('hr/attendance/', views.admin_attendance, name='admin_attendance'),
-    path('attendance/export/', views.export_attendance, name='export_attendance'),
+    path('attendance/manage/', views.admin_attendance, name='admin_attendance'),
 
     # Leave Management
     path('leave/', views.leave_request_list, name="leave_request_list"),
