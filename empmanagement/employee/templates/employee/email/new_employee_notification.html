@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .content {
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>New Employee Onboarded</h2>
+        </div>
+        <div class="content">
+            <p>Hello,</p>
+            <p>A new employee has been onboarded to the system:</p>
+            
+            <h3>Employee Details:</h3>
+            <ul>
+                <li><strong>Name:</strong> {{ employee.first_name }} {{ employee.last_name }}</li>
+                <li><strong>Position:</strong> {{ position }}</li>
+                <li><strong>Department:</strong> {{ department }}</li>
+                {% if employee.email %}
+                <li><strong>Email:</strong> {{ employee.email }}</li>
+                {% endif %}
+            </ul>
+            
+            <p>Please ensure all necessary onboarding procedures are completed.</p>
+        </div>
+        <div class="footer">
+            <p>This is an automated message from the HR Portal System.</p>
+        </div>
+    </div>
+</body>
+</html> 

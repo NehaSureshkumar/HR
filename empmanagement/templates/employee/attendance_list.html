@@ -1,81 +1,203 @@
 {% extends 'employee/base.html' %}
+{% load static %}
+{% load tz %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/attendance.css' %}">
+{% endblock %}
+
 {% block title %}Attendance - Employee Management System{% endblock %}
 {% block content %}
-<div class="max-w-6xl mx-auto py-8 px-4">
-    <h2 class="text-3xl font-bold mb-8 text-blue-800">Attendance Records</h2>
-    
-    <!-- Attendance Records -->
-    <div class="bg-white rounded-lg shadow overflow-hidden mb-8">
-        <h3 class="text-xl font-semibold p-4 bg-gray-50 border-b">Daily Attendance</h3>
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time In</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time Out</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Overtime</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                {% for record in attendance_records %}
-                <tr>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ record.date|date:"M d, Y" }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                            {% if record.status == 'PRESENT' %}bg-green-100 text-green-800
-                            {% elif record.status == 'ABSENT' %}bg-red-100 text-red-800
-                            {% elif record.status == 'HALF_DAY' %}bg-yellow-100 text-yellow-800
-                            {% else %}bg-blue-100 text-blue-800{% endif %}">
-                            {{ record.status }}
-                        </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ record.time_in|time:"H:i" }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ record.time_out|time:"H:i" }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ record.overtime_hours }} hrs</td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="5" class="px-6 py-4 text-center text-gray-500">No attendance records found.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">Attendance Management</h1>
+        <div class="flex space-x-4">
+            {% if not today_attendance %}
+                <button id="clockInBtn" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                    <i class="fas fa-sign-in-alt mr-2"></i> Clock In
+                </button>
+            {% elif today_attendance and not today_attendance.clock_out %}
+                <button id="clockOutBtn" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                    <i class="fas fa-sign-out-alt mr-2"></i> Clock Out
+                </button>
+            {% endif %}
+        </div>
     </div>
 
-    <!-- Leave Records -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
-        <h3 class="text-xl font-semibold p-4 bg-gray-50 border-b">Approved Leave Records</h3>
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Leave Type</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Date</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Date</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                {% for leave in leave_requests %}
-                <tr>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ leave.employee_name }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ leave.get_leave_type_display }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ leave.start_date|date:"M d, Y" }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ leave.end_date|date:"M d, Y" }}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {% with duration=leave.end_date|timeuntil:leave.start_date %}
-                            {{ duration }}
-                        {% endwith %}
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="5" class="px-6 py-4 text-center text-gray-500">No approved leave records found.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <!-- Today's Status -->
+    <div class="bg-white shadow rounded-lg mb-6">
+        <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Today's Status</h3>
+            <div class="mt-5">
+                {% if today_attendance %}
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="text-center">
+                            <p class="text-sm font-medium text-gray-500">Clock In</p>
+                            <p class="mt-1 text-2xl font-semibold text-gray-900">{{ today_attendance.clock_in|localtime|time:"H:i" }}</p>
+                            {% if today_attendance.is_late %}
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    Late
+                                </span>
+                            {% endif %}
+                        </div>
+                        <div class="text-center">
+                            <p class="text-sm font-medium text-gray-500">Clock Out</p>
+                            <p class="mt-1 text-2xl font-semibold text-gray-900">
+                                {% if today_attendance.clock_out %}
+                                    {{ today_attendance.clock_out|localtime|time:"H:i" }}
+                                    {% if today_attendance.auto_clocked_out %}
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                            Auto
+                                        </span>
+                                    {% endif %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    {% if today_attendance.clock_out %}
+                        <div class="mt-4 text-center">
+                            <p class="text-sm font-medium text-gray-500">Total Hours</p>
+                            <p class="mt-1 text-2xl font-semibold text-gray-900">{{ today_attendance.total_hours|default:"-" }}</p>
+                        </div>
+                    {% endif %}
+                    <div class="mt-4 text-center">
+                        <p class="text-sm font-medium text-gray-500">Status</p>
+                        <p class="mt-1 text-lg font-semibold {% if today_attendance.status == 'PRESENT' %}text-green-600{% elif today_attendance.status == 'LATE' %}text-yellow-600{% elif today_attendance.status == 'HALF_DAY' %}text-orange-600{% else %}text-red-600{% endif %}">
+                            {{ today_attendance.status }}
+                        </p>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <p class="text-gray-500">Not clocked in today</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance History -->
+    <div class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Attendance History</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Clock In</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Clock Out</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Hours</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for record in attendance_records %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ record.date|date:"d M Y" }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{ record.clock_in|localtime|time:"H:i" }}
+                                {% if record.is_late %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                        Late
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{ record.clock_out|localtime|time:"H:i"|default:"-" }}
+                                {% if record.auto_clocked_out %}
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                        Auto
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ record.total_hours|default:"-" }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                    {% if record.status == 'PRESENT' %}bg-green-100 text-green-800
+                                    {% elif record.status == 'LATE' %}bg-yellow-100 text-yellow-800
+                                    {% elif record.status == 'HALF_DAY' %}bg-orange-100 text-orange-800
+                                    {% else %}bg-red-100 text-red-800{% endif %}">
+                                    {{ record.status }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="px-6 py-4 text-center text-sm text-gray-500">No attendance records found</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Get CSRF token from cookie
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    const csrftoken = getCookie('csrftoken');
+
+    // Clock In
+    $('#clockInBtn').click(function() {
+        $.ajax({
+            url: '{% url "clock_in" %}',
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken
+            },
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert(response.message);
+                }
+            },
+            error: function() {
+                alert('An error occurred. Please try again.');
+            }
+        });
+    });
+
+    // Clock Out
+    $('#clockOutBtn').click(function() {
+        $.ajax({
+            url: '{% url "clock_out" %}',
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken
+            },
+            success: function(response) {
+                if (response.success) {
+                    location.reload();
+                } else {
+                    alert(response.message);
+                }
+            },
+            error: function() {
+                alert('An error occurred. Please try again.');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
 {% endblock %} 

@@ -15,7 +15,28 @@
                 Sign in to your account
             </p>
         </div>
-        <div class="mt-8 bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+
+        <!-- Microsoft SSO Login -->
+        <div class="mt-8">
+            <a href="{% provider_login_url 'microsoft' %}" 
+               class="w-full flex items-center justify-center px-4 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 md:py-3 md:text-lg md:px-6">
+                <img src="{% static 'images/microsoft-logo.png' %}" alt="Microsoft" class="h-6 w-6 mr-2">
+                Sign in with Microsoft
+            </a>
+        </div>
+
+        <div class="mt-6">
+            <div class="relative">
+                <div class="absolute inset-0 flex items-center">
+                    <div class="w-full border-t border-gray-300"></div>
+                </div>
+                <div class="relative flex justify-center text-sm">
+                    <span class="px-2 bg-white text-gray-500">Or continue with</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-6 bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
             {% if messages %}
                 {% for message in messages %}
                     <div class="mb-4 rounded-md p-4 {% if message.tags == 'error' %}bg-red-50 text-red-700{% else %}bg-blue-50 text-blue-700{% endif %}">
@@ -28,11 +49,12 @@
                 {% csrf_token %}
                 <div>
                     <label for="id_username" class="block text-sm font-medium text-gray-700">
-                        Username
+                        Employee ID or Username
                     </label>
                     <div class="mt-1">
                         <input id="id_username" name="username" type="text" required 
                                class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                               placeholder="Enter your Employee ID or Username"
                                autofocus>
                     </div>
                 </div>
@@ -43,14 +65,15 @@
                     </label>
                     <div class="mt-1">
                         <input id="id_password" name="password" type="password" required
-                               class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                               class="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                               placeholder="Enter your password">
                     </div>
                 </div>
 
                 <div>
                     <button type="submit"
-                            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        Sign in
+                            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-800 hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                        Sign in with Employee ID
                     </button>
                 </div>
             </form>
@@ -61,14 +84,6 @@
                         Forgot your password?
                     </a>
                 </div>
-            </div>
-
-            <div class="mt-4 text-center">
-                <p class="text-muted">Or login with</p>
-                <a href="{% provider_login_url 'microsoft' %}" class="btn btn-outline-primary">
-                    <img src="{% static 'img/microsoft-logo.png' %}" alt="Microsoft" height="24" class="me-2">
-                    Sign in with Microsoft
-                </a>
             </div>
         </div>
     </div>

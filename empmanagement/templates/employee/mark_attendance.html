@@ -2,40 +2,90 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2>Mark Attendance</h2>
-    <form method="post" class="mt-4">
-        {% csrf_token %}
-        <div class="mb-3">
-            <label for="status" class="form-label">Status</label>
-            <select name="status" id="status" class="form-select" required>
-                <option value="">Select Status</option>
-                <option value="PRESENT">Present</option>
-                <option value="ABSENT">Absent</option>
-                <option value="HALF_DAY">Half Day</option>
-                <option value="LATE">Late</option>
-            </select>
+    <div class="row">
+        <!-- Today's Attendance Status -->
+        <div class="col-md-4 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Today's Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <h3 class="mb-3">{{ today_status|default:"Not Clocked In" }}</h3>
+                        <div class="d-flex justify-content-center gap-2">
+                            {% if not clocked_in %}
+                            <button id="clockInBtn" class="btn btn-success" onclick="clockIn()">
+                                <i class="fas fa-sign-in-alt"></i> Clock In
+                            </button>
+                            {% elif clocked_in and not clocked_out %}
+                            <button id="clockOutBtn" class="btn btn-danger" onclick="clockOut()">
+                                <i class="fas fa-sign-out-alt"></i> Clock Out
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if clocked_in %}
+                    <div class="mt-3">
+                        <p><strong>Clock In:</strong> {{ clock_in_time|time:"H:i" }}</p>
+                        {% if clocked_out %}
+                        <p><strong>Clock Out:</strong> {{ clock_out_time|time:"H:i" }}</p>
+                        <p><strong>Total Hours:</strong> {{ total_hours }}</p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
         </div>
-        
-        <div class="mb-3">
-            <label for="time_in" class="form-label">Time In</label>
-            <input type="datetime-local" name="time_in" id="time_in" class="form-control" required>
+
+        <!-- Manual Attendance Entry -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">Manual Attendance Entry</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" class="mt-4">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="status" class="form-label">Status</label>
+                            <select name="status" id="status" class="form-select" required>
+                                <option value="">Select Status</option>
+                                <option value="PRESENT">Present</option>
+                                <option value="ABSENT">Absent</option>
+                                <option value="HALF_DAY">Half Day</option>
+                                <option value="LATE">Late</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="time_in" class="form-label">Time In</label>
+                            <input type="datetime-local" name="time_in" id="time_in" class="form-control" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="time_out" class="form-label">Time Out</label>
+                            <input type="datetime-local" name="time_out" id="time_out" class="form-control">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="overtime_hours" class="form-label">Overtime Hours</label>
+                            <input type="number" name="overtime_hours" id="overtime_hours" class="form-control" min="0" step="0.5" value="0">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="reason" class="form-label">Reason for Manual Entry</label>
+                            <textarea name="reason" id="reason" class="form-control" rows="3" required></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <button type="submit" class="btn btn-primary">Submit Request</button>
+                            <a href="{% url 'attendance_list' %}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
-        
-        <div class="mb-3">
-            <label for="time_out" class="form-label">Time Out</label>
-            <input type="datetime-local" name="time_out" id="time_out" class="form-control">
-        </div>
-        
-        <div class="mb-3">
-            <label for="overtime_hours" class="form-label">Overtime Hours</label>
-            <input type="number" name="overtime_hours" id="overtime_hours" class="form-control" min="0" step="0.5" value="0">
-        </div>
-        
-        <div class="mb-3">
-            <button type="submit" class="btn btn-primary">Submit</button>
-            <a href="{% url 'attendance_list' %}" class="btn btn-secondary">Cancel</a>
-        </div>
-    </form>
+    </div>
 </div>
 
 {% block extra_js %}
@@ -55,6 +105,44 @@
     document.getElementById('time_out').addEventListener('change', function() {
         document.getElementById('time_in').max = this.value;
     });
+
+    // Clock In function
+    function clockIn() {
+        fetch('{% url "clock_in" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        });
+    }
+
+    // Clock Out function
+    function clockOut() {
+        fetch('{% url "clock_out" %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message);
+            }
+        });
+    }
 </script>
 {% endblock %}
 {% endblock %} 

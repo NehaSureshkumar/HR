@@ -1,0 +1,171 @@
+{% extends 'employee/base.html' %}
+
+{% block title %}Asset Management - Employee Management System{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div class="px-4 py-6 sm:px-0">
+        <h1 class="text-3xl font-bold text-gray-900 mb-8">Asset Management</h1>
+
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+            <!-- Total Assets -->
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">Total Assets</dt>
+                                <dd class="text-lg font-semibold text-gray-900">{{ total_assets }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Available Assets -->
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="h-6 w-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">Available Assets</dt>
+                                <dd class="text-lg font-semibold text-gray-900">{{ available_assets }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Assigned Assets -->
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="h-6 w-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">Assigned Assets</dt>
+                                <dd class="text-lg font-semibold text-gray-900">{{ assigned_assets }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Under Maintenance -->
+            <div class="bg-white overflow-hidden shadow rounded-lg">
+                <div class="p-5">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <svg class="h-6 w-6 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-5 w-0 flex-1">
+                            <dl>
+                                <dt class="text-sm font-medium text-gray-500 truncate">Under Maintenance</dt>
+                                <dd class="text-lg font-semibold text-gray-900">{{ maintenance_assets }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="mb-8">
+            <div class="flex justify-end space-x-4">
+                <a href="{% url 'asset_create' %}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700">
+                    Add New Asset
+                </a>
+                <a href="{% url 'asset_list' %}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    View All Assets
+                </a>
+            </div>
+        </div>
+
+        <!-- Recent Assignments & Categories -->
+        <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <!-- Recent Assignments -->
+            <div class="bg-white shadow sm:rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Recent Assignments</h3>
+                    <div class="flow-root">
+                        <ul class="-my-5 divide-y divide-gray-200">
+                            {% for assignment in recent_assignments %}
+                            <li class="py-4">
+                                <div class="flex items-center space-x-4">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium text-gray-900 truncate">
+                                            {{ assignment.asset.name }}
+                                        </p>
+                                        <p class="text-sm text-gray-500">
+                                            Assigned to: {{ assignment.employee.firstName }} {{ assignment.employee.lastName }}
+                                        </p>
+                                        <p class="text-xs text-gray-400">
+                                            {{ assignment.assigned_date|date:"M d, Y" }}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <a href="{% url 'asset_detail' assignment.asset.asset_id %}" class="inline-flex items-center shadow-sm px-2.5 py-0.5 border border-gray-300 text-sm leading-5 font-medium rounded-full text-gray-700 bg-white hover:bg-gray-50">
+                                            View
+                                        </a>
+                                    </div>
+                                </div>
+                            </li>
+                            {% empty %}
+                            <li class="py-4">
+                                <p class="text-sm text-gray-500 text-center">No recent assignments</p>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Categories Overview -->
+            <div class="bg-white shadow sm:rounded-lg">
+                <div class="px-4 py-5 sm:p-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Asset Categories</h3>
+                    <div class="flow-root">
+                        <ul class="-my-5 divide-y divide-gray-200">
+                            {% for category in categories %}
+                            <li class="py-4">
+                                <div class="flex items-center space-x-4">
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium text-gray-900 truncate">
+                                            {{ category.name }}
+                                        </p>
+                                        <p class="text-sm text-gray-500">
+                                            {{ category.asset_count }} asset{{ category.asset_count|pluralize }}
+                                        </p>
+                                    </div>
+                                </div>
+                            </li>
+                            {% empty %}
+                            <li class="py-4">
+                                <p class="text-sm text-gray-500 text-center">No categories defined</p>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

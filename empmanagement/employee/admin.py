@@ -6,11 +6,13 @@ class EmployeeAdmin(admin.ModelAdmin):
     search_fields = ('eID', 'firstName', 'lastName', 'email')
     list_filter = ('designation', 'joinDate')
 
+@admin.register(Document)
 class DocumentAdmin(admin.ModelAdmin):
-    list_display = ('employee', 'document_type', 'status', 'uploaded_at', 'verified_by')
-    list_filter = ('document_type', 'status', 'uploaded_at')
-    search_fields = ('employee__eID', 'employee__firstName', 'employee__lastName')
-    raw_id_fields = ('employee', 'verified_by')
+    list_display = ('employee', 'document_type', 'is_verified', 'uploaded_at')
+    list_filter = ('document_type', 'is_verified')
+    search_fields = ('employee__firstName', 'employee__lastName', 'document_type')
+    raw_id_fields = ('employee',)
+    readonly_fields = ('uploaded_at',)
 
 class UserProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'role', 'profile_completion', 'is_active')
@@ -85,7 +87,6 @@ admin.site.register(Employee, EmployeeAdmin)
 admin.site.register(Attendance)
 admin.site.register(Notice)
 admin.site.register(workAssignments)
-admin.site.register(Document, DocumentAdmin)
 admin.site.register(UserProfile, UserProfileAdmin)
 admin.site.register(AuditLog, AuditLogAdmin)
 admin.site.register(JobOpening)

@@ -5,7 +5,8 @@ from employee.models import (
     Document, UserProfile, AuditLog, JobOpening,
     designations_opt, DOCUMENT_TYPES, PerformanceReview, Goal, LeaveRequest,
     TrainingProgram, TrainingEnrollment, Payroll, Project, EmployeeInformation, IDCard, WiFiAccess, ParkingDetails, InsuranceDetails, ProfileUpdateRequest,
-    TrainingTag, TrainingBlog, TrainingDocument
+    TrainingTag, TrainingBlog, TrainingDocument, Asset, AssetCategory, AssetAssignment,
+    BankDetail, InsurancePolicy, TaxDetail, PersonalDetail
 )
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
@@ -15,7 +16,7 @@ from django.http import JsonResponse
 from django.core.paginator import Paginator
 from django.db import models
 from django.db.models import Sum, Count
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 import uuid
 from django.contrib.auth.models import User
 from django.contrib.admin.views.decorators import staff_member_required
@@ -28,23 +29,11 @@ from django.conf import settings
 import random
 import string
 import logging
-
-def role_required(roles):
-    def decorator(view_func):
-        @wraps(view_func)
-        def _wrapped_view(request, *args, **kwargs):
-            try:
-                profile = UserProfile.objects.get(user=request.user)
-                if profile.role in roles:
-                    return view_func(request, *args, **kwargs)
-                else:
-                    messages.error(request, "You don't have permission to access this page.")
-                    return redirect('dashboard')
-            except UserProfile.DoesNotExist:
-                messages.error(request, "User profile not found.")
-                return redirect('dashboard')
-        return _wrapped_view
-    return decorator
+from django.views.decorators.http import require_http_methods
+from .utils import get_auth_url, get_access_token_from_code, test_email_sending, initiate_auth as utils_initiate_auth, auth_callback as utils_auth_callback
+from .decorators import role_required
+import json
+from django.db import IntegrityError
 
 def staff_required(view_func):
     decorated_view_func = user_passes_test(lambda u: u.is_staff, login_url='/')(view_func)
@@ -60,30 +49,8 @@ def dashboard(request):
         if user_profile.role in ['ADMIN', 'HR']:
             return redirect('admin_dashboard')
         
-        # For regular employees, check profile completion
-        employee, created = Employee.objects.get_or_create(
-            eID=request.user.username,
-            defaults={
-                'firstName': request.user.first_name or 'New',
-                'middleName': '',
-                'lastName': request.user.last_name or 'Employee',
-                'phoneNo': f'temp_{request.user.username}',
-                'email': request.user.email or f'{request.user.username}@temp.com',
-                'addharNo': f'temp_{request.user.username}',
-                'dOB': timezone.now().date(),
-                'designation': 'Intern',
-                'salary': '0',
-                'joinDate': timezone.now().date()
-            }
-        )
-        
-        # Only check onboarding for regular employees
-        documents = Document.objects.filter(employee=employee)
-        if user_profile.profile_completion < 100 or documents.count() < 3:
-            return redirect('onboarding')
-        
-        # Get employee info
-        info = Employee.objects.filter(eID=request.user.username)
+        # Get employee info for the logged-in user only
+        employee = Employee.objects.get(eID=request.user.username)
         
         # Get attendance count for current month
         current_month = timezone.now().month
@@ -126,19 +93,24 @@ def dashboard(request):
         assigned_projects_count = employee.projects.count()
         
         context = {
-            'info': info,
+            'employee': employee,
             'attendance_count': attendance_count,
             'leave_balance': leave_balance,
             'task_count': task_count,
             'training_count': training_count,
             'recent_tasks': recent_tasks,
             'recent_notices': recent_notices,
-            'assigned_projects_count': assigned_projects_count
+            'assigned_projects_count': assigned_projects_count,
+            'user_profile': user_profile
         }
         
-        return render(request, "employee/index.html", context)
+        return render(request, 'employee/index.html', context)
+        
     except UserProfile.DoesNotExist:
         messages.error(request, "User profile not found.")
+        return redirect('login')
+    except Employee.DoesNotExist:
+        messages.error(request, "Employee record not found.")
         return redirect('login')
     
 @login_required(login_url='/')
@@ -215,7 +187,7 @@ def assignedworklist(request):
             employee = Employee.objects.get(eID=request.user.username)
             documents = Document.objects.filter(employee=employee)
             if user_profile.profile_completion < 100 or documents.count() < 3:
-                return redirect('onboarding')
+                return redirect('employee_onboarding')
         
         return render(request, "employee/assignedworklist.html", {
             "works": works,
@@ -246,168 +218,214 @@ def updatework(request,wid):
             form.save()
     return render(request,"employee/updatework.html", {'currentWork': work, "filledForm": form, "flag":flag})
 
-@login_required(login_url='/')
+@login_required
 def profile(request):
-    user_profile = get_object_or_404(UserProfile, user=request.user)
-    # Try to get Employee by eID
     try:
         employee = Employee.objects.get(eID=request.user.username)
-        created = False
-    except Employee.DoesNotExist:
-        # Try to get Employee by email (avoid duplicate email)
-        employee = Employee.objects.filter(email=request.user.email).first()
-        if not employee:
-            # Create new Employee with unique email
-            unique_email = request.user.email or f'{request.user.username}@temp.com'
-            # If email exists, append a suffix
-            if Employee.objects.filter(email=unique_email).exists():
-                unique_email = f'{request.user.username}+{uuid.uuid4().hex[:4]}@temp.com'
-            employee = Employee.objects.create(
-                eID=request.user.username,
-                firstName=request.user.first_name or 'Admin',
-                middleName='',
-                lastName=request.user.last_name or 'User',
-                phoneNo=f'temp_{request.user.username}',
-                email=unique_email,
-                addharNo=f'temp_{request.user.username}',
-                dOB=timezone.now().date(),
-                designation='HR/Admin' if request.user.is_staff else 'Employee',
-                salary='0',
-                joinDate=timezone.now().date()
-            )
-        created = True
-
-    # Handle document re-upload
-    if request.method == 'POST' and 'doc_id' in request.POST and 'document' in request.FILES:
-        doc_id = request.POST.get('doc_id')
-        file = request.FILES.get('document')
-        document = get_object_or_404(Document, id=doc_id, employee=employee)
-        document.file = file
-        document.status = 'PENDING'
-        document.allow_reupload = False
-        document.comments = ''
-        document.save()
-        messages.success(request, 'Document re-uploaded successfully and sent for review!')
-        return redirect('profile')
-
-    # Get documents with latest status and allow_reupload flag
-    documents = Document.objects.filter(employee=employee).order_by('-uploaded_at')
-
-    # Initialize forms for the new sections
-    employee_info_form = EmployeeInformationForm(instance=getattr(employee, 'employeeinformation', None))
-    id_card_form = IDCardForm(instance=getattr(employee, 'idcard', None))
-    wifi_access_form = WiFiAccessForm(instance=getattr(employee, 'wifiaccess', None))
-    parking_form = ParkingDetailsForm(instance=getattr(employee, 'parkingdetails', None))
-    insurance_form = InsuranceDetailsForm(instance=getattr(employee, 'insurancedetails', None))
-    
-    if request.method == "POST":
-        # Update profile information
-        employee.phoneNo = request.POST.get('phone')
-        employee.email = request.POST.get('email')
-        employee.save()
-        user_profile.emergency_contact_name = request.POST.get('emergency_contact_name')
-        user_profile.emergency_contact_phone = request.POST.get('emergency_contact_phone')
-        user_profile.bank_account_number = request.POST.get('bank_account')
-        user_profile.bank_ifsc = request.POST.get('ifsc')
-        user_profile.save()
-        # Calculate profile completion
-        fields = [
-            employee.phoneNo,
-            employee.email,
-            user_profile.emergency_contact_name,
-            user_profile.emergency_contact_phone,
-            user_profile.bank_account_number,
-            user_profile.bank_ifsc
-        ]
-        completed = sum(1 for field in fields if field)
-        user_profile.profile_completion = (completed / len(fields)) * 100
-        user_profile.save()
-        messages.success(request, "Profile updated successfully!")
-        return redirect('profile')
+        user_profile = get_object_or_404(UserProfile, user=request.user)
+        bank_details = BankDetail.objects.filter(employee=employee).first()
         
-    context = {
-        'profile': user_profile,
-        'employee': employee,
-        'documents': documents,
-        'employee_info_form': employee_info_form,
-        'id_card_form': id_card_form,
-        'wifi_access_form': wifi_access_form,
-        'parking_form': parking_form,
-        'insurance_form': insurance_form,
-    }
-    return render(request, "employee/profile.html", context)
+        # Initialize forms
+        employee_info_form = EmployeeInformationForm(instance=getattr(employee, 'employeeinformation', None))
+        id_card_form = IDCardForm(instance=getattr(employee, 'idcard', None))
+        wifi_access_form = WiFiAccessForm(instance=getattr(employee, 'wifiaccess', None))
+        parking_form = ParkingDetailsForm(instance=getattr(employee, 'parkingdetails', None))
+        insurance_form = InsuranceDetailsForm(instance=getattr(employee, 'insurancedetails', None))
+        
+        if request.method == 'POST':
+            form_type = request.POST.get('form_type')
+            
+            if form_type == 'personal':
+                # Update personal details
+                employee.firstName = request.POST.get('firstName')
+                employee.lastName = request.POST.get('lastName')
+                employee.dOB = request.POST.get('dOB')
+                employee.addharNo = request.POST.get('addharNo')
+                employee.save()
+                messages.success(request, 'Personal details updated successfully!')
+                
+            elif form_type == 'contact':
+                # Update contact info
+                employee.email = request.POST.get('email')
+                employee.personal_email = request.POST.get('personal_email')
+                employee.phoneNo = request.POST.get('phoneNo')
+                employee.save()
+                messages.success(request, 'Contact information updated successfully!')
+                
+            elif form_type == 'employment':
+                form = EmployeeInformationForm(request.POST, instance=getattr(employee, 'employeeinformation', None))
+                if form.is_valid():
+                    info = form.save(commit=False)
+                    info.employee = employee
+                    info.save()
+                    messages.success(request, 'Employment details updated successfully!')
+                else:
+                    messages.error(request, 'Please correct the errors below.')
+                    employee_info_form = form
+                
+            elif form_type == 'bank':
+                # Update or create bank details
+                if bank_details:
+                    bank_details.bank_name = request.POST.get('bank_name')
+                    bank_details.account_number = request.POST.get('account_number')
+                    bank_details.ifsc = request.POST.get('ifsc')
+                    bank_details.branch = request.POST.get('branch')
+                    bank_details.save()
+                else:
+                    bank_details = BankDetail.objects.create(
+                        employee=employee,
+                        bank_name=request.POST.get('bank_name'),
+                        account_number=request.POST.get('account_number'),
+                        ifsc=request.POST.get('ifsc'),
+                        branch=request.POST.get('branch')
+                    )
+                messages.success(request, 'Bank details updated successfully!')
+                
+            elif form_type == 'emergency':
+                # Update emergency contact
+                user_profile.emergency_contact_name = request.POST.get('emergency_contact_name')
+                user_profile.emergency_contact_phone = request.POST.get('emergency_contact_phone')
+                user_profile.save()
+                messages.success(request, 'Emergency contact updated successfully!')
+                
+            elif form_type == 'id_card':
+                form = IDCardForm(request.POST, instance=getattr(employee, 'idcard', None))
+                if form.is_valid():
+                    card = form.save(commit=False)
+                    card.employee = employee
+                    card.save()
+                    messages.success(request, 'ID Card details updated successfully!')
+                else:
+                    messages.error(request, 'Please correct the errors below.')
+                    id_card_form = form
+                
+            elif form_type == 'wifi_access':
+                form = WiFiAccessForm(request.POST, instance=getattr(employee, 'wifiaccess', None))
+                if form.is_valid():
+                    wifi = form.save(commit=False)
+                    wifi.employee = employee
+                    wifi.save()
+                    messages.success(request, 'WiFi access details updated successfully!')
+                else:
+                    messages.error(request, 'Please correct the errors below.')
+                    wifi_access_form = form
+                
+            elif form_type == 'parking':
+                form = ParkingDetailsForm(request.POST, instance=getattr(employee, 'parkingdetails', None))
+                if form.is_valid():
+                    parking = form.save(commit=False)
+                    parking.employee = employee
+                    parking.save()
+                    messages.success(request, 'Parking details updated successfully!')
+                else:
+                    messages.error(request, 'Please correct the errors below.')
+                    parking_form = form
+                
+            elif form_type == 'insurance':
+                form = InsuranceDetailsForm(request.POST, instance=getattr(employee, 'insurancedetails', None))
+                if form.is_valid():
+                    insurance = form.save(commit=False)
+                    insurance.employee = employee
+                    insurance.save()
+                    messages.success(request, 'Insurance details updated successfully!')
+                else:
+                    messages.error(request, 'Please correct the errors below.')
+                    insurance_form = form
+        
+        return render(request, 'employee/profile.html', {
+            'employee': employee,
+            'profile': user_profile,
+            'bank_details': bank_details or BankDetail(),
+            'employee_info_form': employee_info_form,
+            'id_card_form': id_card_form,
+            'wifi_access_form': wifi_access_form,
+            'parking_form': parking_form,
+            'insurance_form': insurance_form,
+        })
+        
+    except Employee.DoesNotExist:
+        messages.error(request, "Employee profile not found.")
+        return redirect('dashboard')
 
 @login_required
-@role_required(['EMPLOYEE'])
 def my_documents(request):
-    employee = get_object_or_404(Employee, eID=request.user.username)
-    if request.method == 'POST' and 'doc_id' in request.POST and 'document' in request.FILES:
-        doc_id = request.POST.get('doc_id')
-        file = request.FILES.get('document')
-        document = get_object_or_404(Document, id=doc_id, employee=employee)
-        document.file = file
-        document.status = 'PENDING'
-        document.allow_reupload = False
-        document.comments = ''
-        document.save()
-        messages.success(request, 'Document re-uploaded successfully and sent for review!')
-        return redirect('my_documents')
-    documents = employee.document_set.all().order_by('-uploaded_at')
+    try:
+        # Use eID instead of user field
+        employee = Employee.objects.get(eID=request.user.username)
+        documents = employee.documents.all().order_by('-uploaded_at')
+        
+        # Get document verification statuses
+        info_statuses = {
+            'id_verified': documents.filter(document_type='ID_PROOF', is_verified=True).exists(),
+            'address_verified': documents.filter(document_type='ADDRESS_PROOF', is_verified=True).exists(),
+            'education_verified': documents.filter(document_type='EDUCATION', is_verified=True).exists(),
+            'experience_verified': documents.filter(document_type='EXPERIENCE', is_verified=True).exists(),
+        }
+        
+        return render(request, 'employee/my_documents.html', {
+            'documents': documents,
+            'info_statuses': info_statuses,
+        })
+    except Employee.DoesNotExist:
+        messages.error(request, "Employee profile not found.")
+        return redirect('dashboard')
 
-    # Helper to get status for each info section
-    def get_info_status(attr, form_type):
-        req = ProfileUpdateRequest.objects.filter(
-            employee=employee,
-            proposed_changes__has_key=form_type  # If using PostgreSQL JSONField
-        ).order_by('-reviewed_at').first()
-        if req:
-            return req.status
-        if hasattr(employee, attr):
-            return 'Submitted'
-        return 'Not Submitted'
-
-    info_statuses = {
-        'Employee Information': get_info_status('employeeinformation', 'employee_info'),
-        'ID Card': get_info_status('idcard', 'id_card'),
-        'WiFi Access': get_info_status('wifiaccess', 'wifi_access'),
-        'Parking Details': get_info_status('parkingdetails', 'parking'),
-        'Insurance Details': get_info_status('insurancedetails', 'insurance'),
-    }
-
-    return render(request, 'employee/my_documents.html', {
-        'documents': documents,
-        'info_statuses': info_statuses,
-    })
-
-@login_required(login_url='/')
+@login_required
 def upload_document(request):
-    if request.method == "POST":
-        employee = get_object_or_404(Employee, eID=request.user.username)
-        doc_type = request.POST.get('document_type')
-        file = request.FILES.get('document')
+    try:
+        # Use eID instead of user field
+        employee = Employee.objects.get(eID=request.user.username)
         
-        if not file:
-            messages.error(request, "Please select a file to upload.")
-            return redirect('upload_document')
+        if request.method == 'POST':
+            document_type = request.POST.get('document_type')
+            description = request.POST.get('description')
+            file = request.FILES.get('document')
             
-        document = Document.objects.create(
-            employee=employee,
-            document_type=doc_type,
-            file=file
-        )
+            if document_type and file:
+                document = Document.objects.create(
+                    employee=employee,
+                    document_type=document_type,
+                    description=description,
+                    file=file
+                )
+                messages.success(request, 'Document uploaded successfully!')
+                return redirect('my_documents')
+            else:
+                messages.error(request, 'Please provide all required information.')
         
-        AuditLog.objects.create(
-            user=request.user,
-            action=f"Document Upload - {doc_type}",
-            details=f"Document uploaded for {employee.eID}"
-        )
+        return render(request, 'employee/upload_document.html')
+    except Employee.DoesNotExist:
+        messages.error(request, "Employee profile not found.")
+        return redirect('dashboard')
+
+@login_required
+def update_document(request, doc_id):
+    try:
+        # Use eID instead of user field
+        employee = Employee.objects.get(eID=request.user.username)
+        document = get_object_or_404(Document, id=doc_id, employee=employee)
         
-        messages.success(request, "Document uploaded successfully!")
-        return redirect('my_documents')
+        if document.is_verified:
+            messages.error(request, "Cannot update a verified document.")
+            return redirect('my_documents')
         
-    return render(request, "employee/upload_document.html", {
-        'document_types': DOCUMENT_TYPES
-    })
+        if request.method == 'POST':
+            description = request.POST.get('description')
+            file = request.FILES.get('document')
+            
+            if file:
+                document.file = file
+            if description:
+                document.description = description
+            document.save()
+            
+            messages.success(request, 'Document updated successfully!')
+            return redirect('my_documents')
+        
+        return render(request, 'employee/update_document.html', {'document': document})
+    except Employee.DoesNotExist:
+        messages.error(request, "Employee profile not found.")
+        return redirect('dashboard')
 
 @login_required(login_url='/')
 @role_required(['ADMIN', 'HR'])
@@ -495,48 +513,58 @@ def verify_document(request, doc_id):
 @login_required
 @role_required(['ADMIN', 'HR'])
 def admin_dashboard(request):
-    # Fetch all employees
+    if not request.user.is_staff:
+        return redirect('dashboard')
+        
     employees = Employee.objects.all()
-    user_profile = UserProfile.objects.get(user=request.user)
-    # Fetch ongoing and upcoming projects
-    ongoing_projects = Project.objects.filter(status='ONGOING').order_by('-start_date')
-    upcoming_projects = Project.objects.filter(status='UPCOMING').order_by('-start_date')
-    # Prepare data for each tab
+    user_profiles = UserProfile.objects.all()
+    
+    # Get asset data
+    assets = Asset.objects.all()
+    total_assets = assets.count()
+    available_assets = assets.filter(status='Available').count()
+    assigned_assets = assets.filter(status='Assigned').count()
+    maintenance_assets = assets.filter(status='Under Maintenance').count()
+    
+    # Prepare data for each tab using UserProfile
     bank_details = []
     insurance_policies = []
     tax_details = []
     personal_details = []
+    
     for emp in employees:
-        # Bank details from UserProfile
         try:
             profile = UserProfile.objects.get(user__username=emp.eID)
             bank_details.append({
                 'employee': emp,
-                'account_number': profile.bank_account_number,
-                'ifsc': profile.bank_ifsc,
+                'account_number': profile.bank_account_number if hasattr(profile, 'bank_account_number') else '',
+                'ifsc': profile.bank_ifsc if hasattr(profile, 'bank_ifsc') else ''
             })
             personal_details.append({
                 'employee': emp,
-                'emergency_contact_name': profile.emergency_contact_name,
-                'emergency_contact_phone': profile.emergency_contact_phone,
+                'emergency_contact_name': profile.emergency_contact_name if hasattr(profile, 'emergency_contact_name') else '',
+                'emergency_contact_phone': profile.emergency_contact_phone if hasattr(profile, 'emergency_contact_phone') else ''
             })
         except UserProfile.DoesNotExist:
             bank_details.append({'employee': emp, 'account_number': '', 'ifsc': ''})
             personal_details.append({'employee': emp, 'emergency_contact_name': '', 'emergency_contact_phone': ''})
-        # Insurance and tax (stub, expand if models exist)
+        
+        # Stub data for insurance and tax
         insurance_policies.append({'employee': emp, 'policy': 'N/A'})
         tax_details.append({'employee': emp, 'tax': 'N/A'})
+    
     context = {
         'employees': employees,
-        'user_profile': user_profile,
         'bank_details': bank_details,
         'insurance_policies': insurance_policies,
         'tax_details': tax_details,
         'personal_details': personal_details,
-        'active_hirings': 0,  # Add real logic if needed
-        'total_employees': employees.count(),
-        'ongoing_projects': ongoing_projects,
-        'upcoming_projects': upcoming_projects,
+        # Asset data
+        'assets': assets,
+        'total_assets': total_assets,
+        'available_assets': available_assets,
+        'assigned_assets': assigned_assets,
+        'maintenance_assets': maintenance_assets,
     }
     return render(request, 'employee/admin_dashboard.html', context)
 
@@ -701,7 +729,7 @@ def employee_onboarding(request):
                 email=email,
                 joinDate=join_date,
                 designation=designation,
-                phoneNo='pending',
+                phoneNo=None,
                 dOB=timezone.now().date(),
                 salary='0',
                 addharNo=temp_aadhar  # Using the unique temporary Aadhar number
@@ -723,49 +751,22 @@ def employee_onboarding(request):
                     role='EMPLOYEE',
                     profile_completion=0
                 )
+
+                # Send notification email using Microsoft Graph API
+                try:
+                    from .utils import send_new_employee_notification
+                    send_new_employee_notification(employee, temp_password)
+                    messages.success(request, f'Employee created successfully with ID: {employee_id}. Welcome email with login credentials sent.')
+                except Exception as email_error:
+                    print(f"Email sending failed: {str(email_error)}")
+                    messages.warning(request, f'''Employee created successfully with ID: {employee_id}.
+                    However, welcome email could not be sent. Please provide these credentials manually:
+                    Username: {employee_id}
+                    Temporary Password: {temp_password}''')
+
             except Exception as user_error:
                 employee.delete()  # Rollback employee creation if user creation fails
                 raise Exception(f"Failed to create user account: {str(user_error)}")
-
-            # Prepare email content with formatted date
-            email_subject = 'Welcome to Our Company!'
-            email_message = f'''Dear {employee.firstName},
-
-Welcome to our company! Your account has been created successfully.
-
-Your Employee Details:
-- Employee ID: {employee.eID}
-- Join Date: {join_date.strftime('%d-%m-%Y')}
-- Designation: {employee.designation}
-
-Your Login Credentials:
-- Username: {employee.eID}
-- Temporary Password: {temp_password}
-
-Please login at http://localhost:8000/ems/accounts/login/ and change your password.
-
-Best regards,
-HR Team'''
-
-            try:
-                # Send welcome email
-                from django.core.mail import EmailMessage
-                email = EmailMessage(
-                    email_subject,
-                    email_message,
-                    settings.DEFAULT_FROM_EMAIL,
-                    [employee.email],
-                )
-                email.fail_silently = False
-                email.send(fail_silently=False)
-                
-                messages.success(request, f'Employee created successfully with ID: {employee_id}. Welcome email sent with login credentials.')
-            except Exception as email_error:
-                logger.error(f"Email sending failed: {str(email_error)}", exc_info=True)
-                messages.warning(request, f'''Employee created successfully with ID: {employee_id}.
-                However, welcome email could not be sent. Please provide these credentials manually:
-                Username: {employee_id}
-                Temporary Password: {temp_password}''')
 
             return redirect('employee_onboarding')
         except Exception as e:
@@ -851,7 +852,7 @@ def update_profile(request):
         
         messages.success(request, "Profile updated successfully!")
         
-    return redirect('onboarding')
+    return redirect('employee_onboarding')
 
 @login_required
 def performance_review_list(request):
@@ -1023,53 +1024,258 @@ def approve_leave_request(request, request_id):
 @login_required
 def attendance_list(request):
     try:
-        user_profile = UserProfile.objects.get(user=request.user)
-        if user_profile.role in ['ADMIN', 'HR']:
-            attendance_records = Attendance.objects.all()
-            leave_requests = LeaveRequest.objects.filter(status='APPROVED').order_by('-start_date')
-            # Get employee names for leave requests
-            for leave in leave_requests:
-                try:
-                    employee = Employee.objects.get(eID=leave.eId)
-                    leave.employee_name = f"{employee.firstName} {employee.lastName}"
-                except Employee.DoesNotExist:
-                    leave.employee_name = leave.eId
-        else:
-            attendance_records = Attendance.objects.filter(eId=request.user.username)
-            leave_requests = LeaveRequest.objects.filter(eId=request.user.username, status='APPROVED').order_by('-start_date')
-            for leave in leave_requests:
-                leave.employee_name = request.user.get_full_name() or request.user.username
-        return render(request, 'employee/attendance_list.html', {
+        today = timezone.now().date()
+        
+        # Get today's attendance
+        today_attendance = Attendance.objects.filter(
+            eId=request.user.username,
+            date=today
+        ).first()
+
+        # Get attendance history (last 30 days)
+        attendance_records = Attendance.objects.filter(
+            eId=request.user.username
+        ).order_by('-date', '-time_in')[:30]
+
+        context = {
+            'today_attendance': today_attendance,
             'attendance_records': attendance_records,
-            'leave_requests': leave_requests
-        })
-    except UserProfile.DoesNotExist:
-        attendance_records = []
-        leave_requests = []
-        return render(request, 'employee/attendance_list.html', {
-            'attendance_records': attendance_records,
-            'leave_requests': leave_requests
-        })
+        }
+        
+        return render(request, 'employee/attendance_list.html', context)
+    except Exception as e:
+        logger.error(f"Attendance list error: {str(e)}")
+        messages.error(request, 'An error occurred while fetching attendance records.')
+        return redirect('dashboard')
 
 @login_required
-def mark_attendance(request):
-    if request.method == 'POST':
-        status = request.POST.get('status')
-        time_in = request.POST.get('time_in')
-        time_out = request.POST.get('time_out')
-        overtime_hours = request.POST.get('overtime_hours', 0)
+@require_http_methods(["POST"])
+def clock_in(request):
+    try:
+        today = timezone.now().date()
+        current_time = timezone.now()
 
+        # Check if there's an existing clock-in record for today
+        existing_attendance = Attendance.objects.filter(
+            eId=request.user.username,
+            date=today
+        ).first()
+
+        if existing_attendance:
+            return JsonResponse({
+                'success': False,
+                'message': 'You have already clocked in for today.'
+            }, status=400)
+
+        # Create new attendance record
         attendance = Attendance.objects.create(
             eId=request.user.username,
-            date=timezone.now().date(),
-            time_in=time_in,
-            time_out=time_out,
-            status=status,
-            overtime_hours=overtime_hours
+            time_in=current_time,
+            date=today,
+            status='PRESENT'
         )
-        messages.success(request, 'Attendance marked successfully.')
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Clocked in successfully!',
+            'clock_in_time': attendance.time_in.strftime('%H:%M')
+        }, status=201)
+
+    except IntegrityError as e:
+        logger.error(f"Clock-in IntegrityError for user {request.user.username}: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'message': 'Failed to clock in due to a duplicate record. Please contact support.'
+        }, status=400)
+    except Exception as e:
+        logger.error(f"Clock-in error for user {request.user.username}: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'message': 'An unexpected error occurred while clocking in. Please try again later.'
+        }, status=500)
+
+@login_required
+@require_http_methods(["POST"])
+def clock_out(request):
+    try:
+        today = timezone.now().date()
+        current_time = timezone.now()
+
+        attendance = Attendance.objects.filter(
+            eId=request.user.username,
+            date=today,
+            time_out__isnull=True
+        ).first()
+
+        if not attendance:
+            return JsonResponse({
+                'success': False,
+                'message': 'No active clock-in record found for today.'
+            }, status=400)
+
+        attendance.time_out = current_time
+        attendance.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Clocked out successfully!',
+            'clock_out_time': attendance.time_out.strftime('%H:%M')
+        }, status=200)
+
+    except Exception as e:
+        logger.error(f"Clock-out error for user {request.user.username}: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'message': 'An unexpected error occurred while clocking out. Please try again later.'
+        }, status=500)
+
+@login_required
+@role_required(['ADMIN', 'HR'])
+def admin_attendance(request):
+    employees = User.objects.filter(is_staff=False, is_superuser=False)
+    attendance_records = Attendance.objects.all().order_by('-date', '-clock_in')
+
+    # Filters
+    selected_employee_id = request.GET.get('employee')
+    date_from_str = request.GET.get('date_from')
+    date_to_str = request.GET.get('date_to')
+    selected_status = request.GET.get('status')
+
+    if selected_employee_id:
+        attendance_records = attendance_records.filter(employee__id=selected_employee_id)
+    if date_from_str:
+        attendance_records = attendance_records.filter(date__gte=date_from_str)
+    if date_to_str:
+        attendance_records = attendance_records.filter(date__lte=date_to_str)
+    if selected_status:
+        attendance_records = attendance_records.filter(status=selected_status)
+
+    # Pagination
+    paginator = Paginator(attendance_records, 10) # Show 10 records per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'employees': employees,
+        'attendance_records': page_obj,
+        'selected_employee': int(selected_employee_id) if selected_employee_id else '',
+        'date_from': date_from_str if date_from_str else '',
+        'date_to': date_to_str if date_to_str else '',
+        'selected_status': selected_status if selected_status else '',
+    }
+    return render(request, 'employee/admin_attendance.html', context)
+
+@login_required
+@require_http_methods(["GET"])
+def record_details(request, record_id):
+    record = get_object_or_404(Attendance, id=record_id)
+    data = {
+        'employee_name': record.employee.get_full_name(),
+        'date': record.date.strftime('%Y-%m-%d'),
+        'clock_in': record.clock_in.strftime('%H:%M'),
+        'clock_out': record.clock_out.strftime('%H:%M') if record.clock_out else None,
+        'total_hours': str(record.total_hours) if record.total_hours else None,
+        'status': record.status,
+        'reason': record.reason,
+        'is_manual': record.is_manual,
+    }
+    return JsonResponse(data)
+
+@login_required
+@role_required(['ADMIN', 'HR'])
+@require_http_methods(["POST"])
+def approve_record(request, record_id):
+    record = get_object_or_404(Attendance, id=record_id)
+    if record.status == 'PENDING':
+        record.status = 'APPROVED' # Or 'PRESENT' if it was a manual clock-in
+        record.save()
+        return JsonResponse({'success': True, 'message': 'Attendance record approved.'})
+    return JsonResponse({'success': False, 'message': 'Record is not pending approval.'})
+
+@login_required
+@role_required(['ADMIN', 'HR'])
+@require_http_methods(["POST"])
+def reject_record(request, record_id):
+    record = get_object_or_404(Attendance, id=record_id)
+    if record.status == 'PENDING':
+        data = json.loads(request.body)
+        reason = data.get('reason', 'No reason provided.')
+        record.status = 'REJECTED'
+        record.reason = reason # Store rejection reason
+        record.save()
+        return JsonResponse({'success': True, 'message': 'Attendance record rejected.'})
+    return JsonResponse({'success': False, 'message': 'Record is not pending approval.'})
+
+@login_required
+def regulate_attendance(request, record_id):
+    record = get_object_or_404(Attendance, id=record_id)
+    
+    if request.method == 'POST':
+        status = request.POST.get('status')
+        time_in_str = request.POST.get('time_in')
+        time_out_str = request.POST.get('time_out')
+        overtime_hours = request.POST.get('overtime_hours', 0)
+        reason = request.POST.get('reason', '')
+
+        try:
+            record.clock_in = datetime.strptime(time_in_str, '%H:%M').time() if time_in_str else None
+            record.clock_out = datetime.strptime(time_out_str, '%H:%M').time() if time_out_str else None
+        except ValueError:
+            messages.error(request, "Invalid time format.")
+            return redirect('regulate_attendance', record_id=record.id)
+
+        record.status = status
+        record.overtime_hours = overtime_hours
+        record.reason = reason # Store reason for changes
+        record.is_manual = True # Mark as manual if edited
+        record.save()
+        messages.success(request, 'Attendance record updated successfully.')
         return redirect('attendance_list')
-    return render(request, 'employee/mark_attendance.html')
+    
+    context = {
+        'record': record,
+    }
+    return render(request, 'employee/regulate_attendance.html', context)
+
+@login_required
+@role_required(['ADMIN', 'HR'])
+def export_attendance(request):
+    attendance_records = Attendance.objects.all().order_by('date', 'employee__username')
+
+    # Apply filters from GET parameters
+    selected_employee_id = request.GET.get('employee')
+    date_from_str = request.GET.get('date_from')
+    date_to_str = request.GET.get('date_to')
+    selected_status = request.GET.get('status')
+
+    if selected_employee_id:
+        attendance_records = attendance_records.filter(employee__id=selected_employee_id)
+    if date_from_str:
+        attendance_records = attendance_records.filter(date__gte=date_from_str)
+    if date_to_str:
+        attendance_records = attendance_records.filter(date__lte=date_to_str)
+    if selected_status:
+        attendance_records = attendance_records.filter(status=selected_status)
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="attendance_report.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow(['Employee', 'Date', 'Clock In', 'Clock Out', 'Total Hours', 'Status', 'Is Manual', 'Reason'])
+
+    for record in attendance_records:
+        writer.writerow([
+            record.employee.get_full_name(),
+            record.date.strftime('%Y-%m-%d'),
+            record.clock_in.strftime('%H:%M') if record.clock_in else '',
+            record.clock_out.strftime('%H:%M') if record.clock_out else '',
+            str(record.total_hours) if record.total_hours else '',
+            record.status,
+            'Yes' if record.is_manual else 'No',
+            record.reason if record.reason else '',
+        ])
+
+    return response
 
 @login_required
 def training_program_list(request):
@@ -1905,3 +2111,167 @@ def generate_company_email(first_name, last_name):
     # Generate a random string to ensure uniqueness
     random_str = ''.join(random.choices(string.ascii_lowercase + string.digits, k=4))
     return f"{first_name.lower()}.{last_name.lower()}.{random_str}@company.com"
+
+@require_http_methods(["GET"])
+def initiate_auth(request):
+    """Initiate the OAuth flow"""
+    return utils_initiate_auth(request)
+
+@require_http_methods(["GET"])
+def auth_callback(request):
+    """Handle the OAuth callback"""
+    return utils_auth_callback(request)
+
+@require_http_methods(["GET"])
+def test_email(request):
+    """Test email sending functionality"""
+    test_email_sending(request)
+    return redirect('dashboard')
+
+@login_required
+@role_required(['ADMIN', 'HR'])
+def asset_dashboard(request):
+    total_assets = Asset.objects.count()
+    available_assets = Asset.objects.filter(status='AVAILABLE').count()
+    assigned_assets = Asset.objects.filter(status='ASSIGNED').count()
+    maintenance_assets = Asset.objects.filter(status='MAINTENANCE').count()
+    
+    recent_assignments = AssetAssignment.objects.filter(is_returned=False).order_by('-assigned_date')[:5]
+    categories = AssetCategory.objects.annotate(asset_count=Count('asset'))
+    
+    context = {
+        'total_assets': total_assets,
+        'available_assets': available_assets,
+        'assigned_assets': assigned_assets,
+        'maintenance_assets': maintenance_assets,
+        'recent_assignments': recent_assignments,
+        'categories': categories,
+    }
+    return render(request, 'employee/asset_dashboard.html', context)
+
+@login_required
+@role_required(['ADMIN', 'HR'])
+def asset_list(request):
+    assets = Asset.objects.all().order_by('-created_at')
+    return render(request, 'employee/asset_list.html', {'assets': assets})
+
+@login_required
+@role_required(['ADMIN', 'HR'])
+def asset_detail(request, asset_id):
+    asset = get_object_or_404(Asset, asset_id=asset_id)
+    assignments = AssetAssignment.objects.filter(asset=asset).order_by('-assigned_date')
+    return render(request, 'employee/asset_detail.html', {
+        'asset': asset,
+        'assignments': assignments
+    })
+
+@login_required
+@role_required(['ADMIN', 'HR'])
+def asset_create(request):
+    if request.method == 'POST':
+        # Generate unique asset ID
+        last_asset = Asset.objects.order_by('-asset_id').first()
+        if last_asset:
+            last_num = int(last_asset.asset_id[3:])
+            new_num = str(last_num + 1).zfill(6)
+            new_asset_id = f"AST{new_num}"
+        else:
+            new_asset_id = "AST000001"
+            
+        asset = Asset.objects.create(
+            asset_id=new_asset_id,
+            name=request.POST['name'],
+            category_id=request.POST['category'],
+            description=request.POST.get('description', ''),
+            serial_number=request.POST.get('serial_number', ''),
+            purchase_date=request.POST.get('purchase_date'),
+            purchase_cost=request.POST.get('purchase_cost'),
+            condition=request.POST['condition'],
+            notes=request.POST.get('notes', '')
+        )
+        messages.success(request, 'Asset created successfully!')
+        return redirect('asset_detail', asset_id=asset.asset_id)
+    
+    categories = AssetCategory.objects.all()
+    return render(request, 'employee/asset_form.html', {'categories': categories})
+
+@login_required
+@role_required(['ADMIN', 'HR'])
+def asset_edit(request, asset_id):
+    asset = get_object_or_404(Asset, asset_id=asset_id)
+    if request.method == 'POST':
+        asset.name = request.POST['name']
+        asset.category_id = request.POST['category']
+        asset.description = request.POST.get('description', '')
+        asset.serial_number = request.POST.get('serial_number', '')
+        asset.purchase_date = request.POST.get('purchase_date')
+        asset.purchase_cost = request.POST.get('purchase_cost')
+        asset.condition = request.POST['condition']
+        asset.status = request.POST['status']
+        asset.notes = request.POST.get('notes', '')
+        asset.save()
+        messages.success(request, 'Asset updated successfully!')
+        return redirect('asset_detail', asset_id=asset.asset_id)
+    
+    categories = AssetCategory.objects.all()
+    return render(request, 'employee/asset_form.html', {
+        'asset': asset,
+        'categories': categories
+    })
+
+@login_required
+@role_required(['ADMIN', 'HR'])
+def asset_assign(request, asset_id):
+    asset = get_object_or_404(Asset, asset_id=asset_id)
+    if request.method == 'POST':
+        if asset.status != 'AVAILABLE':
+            messages.error(request, 'This asset is not available for assignment.')
+            return redirect('asset_detail', asset_id=asset.asset_id)
+            
+        assignment = AssetAssignment.objects.create(
+            asset=asset,
+            employee_id=request.POST['employee'],
+            assigned_date=request.POST['assigned_date'],
+            return_date=request.POST.get('return_date'),
+            assigned_by=request.user,
+            assignment_notes=request.POST.get('notes', '')
+        )
+        messages.success(request, 'Asset assigned successfully!')
+        return redirect('asset_detail', asset_id=asset.asset_id)
+    
+    employees = Employee.objects.all()
+    return render(request, 'employee/asset_assign.html', {
+        'asset': asset,
+        'employees': employees
+    })
+
+@login_required
+@role_required(['ADMIN', 'HR'])
+def asset_return(request, assignment_id):
+    assignment = get_object_or_404(AssetAssignment, id=assignment_id)
+    if request.method == 'POST':
+        assignment.is_returned = True
+        assignment.return_notes = request.POST.get('return_notes', '')
+        assignment.save()
+        messages.success(request, 'Asset returned successfully!')
+        return redirect('asset_detail', asset_id=assignment.asset.asset_id)
+    
+    return render(request, 'employee/asset_return.html', {'assignment': assignment})
+
+@login_required
+@role_required(['ADMIN', 'HR'])
+def asset_delete(request, asset_id):
+    asset = get_object_or_404(Asset, asset_id=asset_id)
+    
+    if request.method == 'POST':
+        # Check if asset can be deleted (not assigned)
+        if asset.status == 'ASSIGNED':
+            messages.error(request, 'Cannot delete an assigned asset. Please return the asset first.')
+            return redirect('asset_detail', asset_id=asset.asset_id)
+        
+        asset.delete()
+        messages.success(request, 'Asset deleted successfully!')
+        return redirect('asset_list')
+    
+    return render(request, 'employee/asset_delete.html', {'asset': asset})
+

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="50" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg">
+    <style>
+        .text { font-family: Arial, sans-serif; font-weight: bold; }
+        .ms { fill: #0078D4; }
+        .id { fill: #333333; }
+    </style>
+    <text x="10" y="35" class="text ms" font-size="24">MS</text>
+    <text x="50" y="35" class="text id" font-size="24">ID</text>
+</svg> 

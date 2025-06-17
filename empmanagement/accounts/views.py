@@ -5,12 +5,23 @@ from django.contrib.auth.models import User
 from employee.models import UserProfile, Employee
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
+from allauth.socialaccount.models import SocialAccount
 
 def login_user(request):
     if request.method == 'POST':
         username = request.POST['username']
         password = request.POST['password']
+        
+        # Try to authenticate with username
         user = authenticate(request, username=username, password=password)
+        
+        if not user and '@' not in username:
+            # If authentication failed and username is an employee ID, try to get the user
+            try:
+                employee = Employee.objects.get(eID=username)
+                user = authenticate(request, username=employee.eID, password=password)
+            except Employee.DoesNotExist:
+                pass
         
         if user is not None:
             login(request, user)
@@ -38,7 +49,7 @@ def login_user(request):
                     except Employee.DoesNotExist:
                         messages.error(request, "Employee profile not found.")
                         logout(request)
-                        return redirect('login_user')
+                        return redirect('login')
             
             # Get the next URL from the request
             next_url = request.GET.get('next')
@@ -50,8 +61,8 @@ def login_user(request):
                 return redirect('admin_dashboard')
             return redirect('dashboard')
         else:
-            messages.error(request, "Invalid username or password!")
-            return redirect('login_user')
+            messages.error(request, "Invalid username/employee ID or password!")
+            return redirect('login')
     
     return render(request, 'accounts/login.html')
 
@@ -76,7 +87,7 @@ def signup(request):
         )
         
         messages.success(request, "Account created successfully! Please log in.")
-        return redirect('login_user')
+        return redirect('login')
     
     return render(request, 'accounts/signup.html')
 

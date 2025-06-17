@@ -27,7 +27,7 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-unsafe-key')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = ['localhost']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '172.16.5.102']
 
 
 # Application definition
@@ -49,6 +49,83 @@ INSTALLED_APPS = [
     'allauth.socialaccount',
     'allauth.socialaccount.providers.microsoft',
 ]
+
+# Jazzmin Settings
+JAZZMIN_SETTINGS = {
+    # title of the window (Will default to current_admin_site.site_title if absent or None)
+    "site_title": "HR Portal Admin",
+    # Title on the login screen (19 chars max) (Will default to current_admin_site.site_header if absent or None)
+    "site_header": "HR Portal",
+    # Title on the brand (19 chars max) (Will default to current_admin_site.site_header if absent or None)
+    "site_brand": "HR Portal",
+    # Logo to use for your site, must be present in static files, used for brand on top left
+    "site_logo": None,
+    # Logo to use for your site, must be present in static files, used for login form logo (defaults to site_logo)
+    "login_logo": None,
+    # CSS classes that are applied to the logo above
+    "site_logo_classes": "img-circle",
+    # Relative path to a favicon for your site, will default to site_logo if absent (ideally 32x32 px)
+    "site_icon": None,
+    # Welcome text on the login screen
+    "welcome_sign": "Welcome to HR Portal",
+    # Copyright on the footer
+    "copyright": "HR Portal Ltd",
+    # The model admin to search from the search bar, search bar omitted if excluded
+    "search_model": "auth.User",
+    # Field name on user model that contains avatar ImageField/URLField/Charfield or a callable that receives the user
+    "user_avatar": None,
+    ############
+    # Top Menu #
+    ############
+    # Links to put along the top menu
+    "topmenu_links": [
+        {"name": "Home", "url": "admin:index", "permissions": ["auth.view_user"]},
+        {"name": "Support", "url": "https://github.com/farridav/django-jazzmin/issues", "new_window": True},
+        {"model": "auth.User"},
+        {"app": "employee"},
+    ],
+    #############
+    # Side Menu #
+    #############
+    # Whether to display the side menu
+    "show_sidebar": True,
+    # Whether to aut expand the menu
+    "navigation_expanded": True,
+    # Custom icons for side menu apps/models
+    "icons": {
+        "auth": "fas fa-users-cog",
+        "auth.user": "fas fa-user",
+        "auth.Group": "fas fa-users",
+        "employee": "fas fa-users",
+        "accounts": "fas fa-user-circle",
+    },
+    # Icons that are used when one is not manually specified
+    "default_icon_parents": "fas fa-chevron-circle-right",
+    "default_icon_children": "fas fa-circle",
+    #############
+    # UI Tweaks #
+    #############
+    # Relative paths to custom CSS/JS files (must be present in static files)
+    "custom_css": None,
+    "custom_js": None,
+    # Whether to show the UI customizer on the sidebar
+    "show_ui_builder": False,
+    ###############
+    # Change view #
+    ###############
+    # Render out the change view as a single form, or in tabs, current options are
+    # - single
+    # - horizontal_tabs (default)
+    # - vertical_tabs
+    # - collapsible
+    # - carousel
+    "changeform_format": "horizontal_tabs",
+    # override change forms on a per modeladmin basis
+    "changeform_format_overrides": {
+        "auth.user": "collapsible",
+        "auth.group": "vertical_tabs",
+    },
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -137,9 +214,14 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
-    BASE_DIR / 'empmanagement' / 'static',
 ]
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Static files finders
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+]
 
 # Media files
 MEDIA_URL = '/media/'
@@ -161,14 +243,17 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'noreply@example.com'
 
 # Microsoft Graph API Settings
-MS_GRAPH_CLIENT_ID = config('MS_GRAPH_CLIENT_ID', default='4b4a2fc8-31b1-4df1-a06d-49dab8795c3b')
-MS_GRAPH_TENANT_ID = config('MS_GRAPH_TENANT_ID', default='dcd98ff5-357f-450f-91dc-94ea4024b76c')
-MS_GRAPH_CLIENT_SECRET = config('MS_GRAPH_CLIENT_SECRET', default='PTf8Q~hN2DiZU3KzPqn4Zs9UOqijrqNqGAujkcEO')
+MS_GRAPH_CLIENT_ID = '4b4a2fc8-31b1-4df1-a06d-49dab8795c3b'
+MS_GRAPH_CLIENT_SECRET = 'pgS8Q~C~d7wjW4Cqx-yDHVHNWQ7wbPIoNPmVkaw3'
+MS_GRAPH_TENANT_ID = 'dcd98ff5-357f-450f-91dc-94ea4024b76c'  # Updated tenant ID
+MS_GRAPH_USER_EMAIL = 'noreply@appglide.io'
+MS_GRAPH_REDIRECT_URI = 'http://localhost:8000/ems/auth/callback/'
 
 # Add debug logging for settings
 if DEBUG:
     print(f"Client ID configured: {'Yes' if MS_GRAPH_CLIENT_ID else 'No'}")
     print(f"Client Secret configured: {'Yes' if MS_GRAPH_CLIENT_SECRET else 'No'}")
+    print(f"User Email configured: {'Yes' if MS_GRAPH_USER_EMAIL else 'No'}")
 
 # Login/Logout URLs
 LOGIN_REDIRECT_URL = '/ems/dashboard/'
@@ -208,12 +293,12 @@ LOGGING = {
         },
         'file': {
             'class': 'logging.FileHandler',
-            'filename': 'debug.log',
+            'filename': BASE_DIR / 'debug.log',
             'formatter': 'verbose',
         },
     },
     'loggers': {
-        'employee.ms_graph_backend': {
+        'employee': {
             'handlers': ['console', 'file'],
             'level': 'DEBUG',
             'propagate': True,

@@ -5,6 +5,25 @@
 {% block content %}
 <div class="max-w-6xl mx-auto py-8 px-4">
     <h2 class="text-3xl font-bold mb-8 text-blue-800">Welcome, {{ user.get_full_name|default:user.username }}!</h2>
+    
+    <!-- Employee Info Card -->
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+        <div class="flex items-center space-x-4 mb-6">
+            <img src="https://ui-avatars.com/api/?name={{ employee.firstName }}+{{ employee.lastName }}" alt="Profile" class="w-16 h-16 rounded-full">
+            <div>
+                <h3 class="text-xl font-semibold">{{ employee.firstName }} {{ employee.lastName }}</h3>
+                <p class="text-gray-600">{{ employee.designation }}</p>
+                <p class="text-gray-500 text-sm">Employee ID: {{ employee.eID }}</p>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-4 text-sm">
+            <div><span class="font-medium">Email:</span> {{ employee.email }}</div>
+            <div><span class="font-medium">Phone:</span> {{ employee.phoneNo }}</div>
+            <div><span class="font-medium">Department:</span> {{ employee.department|default:'-' }}</div>
+            <div><span class="font-medium">Join Date:</span> {{ employee.joinDate|date:'M d, Y' }}</div>
+        </div>
+    </div>
+
     <!-- Stat Cards -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-10">
         <div class="bg-white rounded-lg shadow p-6 flex flex-col items-center">
@@ -24,50 +43,52 @@
             <div class="text-gray-600">Enrolled Trainings</div>
         </div>
         <div class="bg-white rounded-lg shadow p-6 flex flex-col items-center">
-            <div class="text-3xl font-bold text-indigo-600 mb-2">{{ assigned_projects_count|default:0 }}</div>
+            <div class="text-3xl font-bold text-purple-600 mb-2">{{ assigned_projects_count|default:0 }}</div>
             <div class="text-gray-600">Assigned Projects</div>
         </div>
     </div>
+
     <!-- Recent Tasks & Notices -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Recent Tasks -->
         <div class="bg-white rounded-lg shadow p-6">
-            <div class="font-semibold text-lg mb-4 text-blue-700">Recent Tasks</div>
-            {% if recent_tasks %}
-            <ul class="divide-y divide-gray-100">
+            <h3 class="text-xl font-semibold mb-4">Recent Tasks</h3>
+            <div class="space-y-4">
                 {% for task in recent_tasks %}
-                <li class="py-3 flex justify-between items-center">
-                    <span class="truncate text-gray-800">{{ task.work|truncatechars:40 }}</span>
-                    <span class="inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">Due: {{ task.dueDate|date:"M d, Y" }}</span>
-                </li>
+                <div class="border-b pb-4 last:border-0 last:pb-0">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-medium">{{ task.work }}</h4>
+                            <p class="text-sm text-gray-500">Assigned by: {{ task.assignerId }}</p>
+                        </div>
+                        <span class="text-sm text-gray-500">{{ task.assignDate|date:'M d, Y' }}</span>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-gray-500 text-center">No recent tasks</p>
                 {% endfor %}
-            </ul>
-            {% else %}
-            <p class="text-gray-400">No recent tasks.</p>
-            {% endif %}
+            </div>
         </div>
+
+        <!-- Recent Notices -->
         <div class="bg-white rounded-lg shadow p-6">
-            <div class="font-semibold text-lg mb-4 text-blue-700">Recent Notices</div>
-            {% if recent_notices %}
-            <ul class="divide-y divide-gray-100">
+            <h3 class="text-xl font-semibold mb-4">Recent Notices</h3>
+            <div class="space-y-4">
                 {% for notice in recent_notices %}
-                <li class="py-3 flex justify-between items-center">
-                    <span class="truncate text-gray-800">{{ notice.title|truncatechars:40 }}</span>
-                    <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">{{ notice.publishDate|date:"M d, Y" }}</span>
-                </li>
+                <div class="border-b pb-4 last:border-0 last:pb-0">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-medium">{{ notice.title }}</h4>
+                            <p class="text-sm text-gray-500">{{ notice.description|truncatewords:20 }}</p>
+                        </div>
+                        <span class="text-sm text-gray-500">{{ notice.publishDate|date:'M d, Y' }}</span>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-gray-500 text-center">No recent notices</p>
                 {% endfor %}
-            </ul>
-            {% else %}
-            <p class="text-gray-400">No recent notices.</p>
-            {% endif %}
+            </div>
         </div>
-    </div>
-    <!-- Quick Links -->
-    <div class="flex flex-wrap gap-4 justify-center">
-        <a href="{% url 'profile' %}" class="px-6 py-3 bg-blue-600 text-white rounded shadow hover:bg-blue-700 font-medium">My Profile</a>
-        <a href="{% url 'mywork' %}" class="px-6 py-3 bg-indigo-600 text-white rounded shadow hover:bg-indigo-700 font-medium">My Work</a>
-        <a href="{% url 'attendance_list' %}" class="px-6 py-3 bg-green-600 text-white rounded shadow hover:bg-green-700 font-medium">Attendance</a>
-        <a href="{% url 'leave_request_list' %}" class="px-6 py-3 bg-yellow-500 text-white rounded shadow hover:bg-yellow-600 font-medium">Leave Requests</a>
-        <a href="{% url 'notice' %}" class="px-6 py-3 bg-gray-600 text-white rounded shadow hover:bg-gray-700 font-medium">Notices</a>
     </div>
 </div>
 {% endblock %}

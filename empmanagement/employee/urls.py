@@ -43,9 +43,11 @@ urlpatterns = [
     
     # Attendance
     path('attendance/', views.attendance_list, name="attendance_list"),
-    path('attendance/mark/', views.mark_attendance, name="mark_attendance"),
-    path('attendance/report/', views.report_download, name='report_download'),
-    
+    path('attendance/clock-in/', views.clock_in, name='clock_in'),
+    path('attendance/clock-out/', views.clock_out, name='clock_out'),
+    path('hr/attendance/', views.admin_attendance, name='admin_attendance'),
+    path('attendance/export/', views.export_attendance, name='export_attendance'),
+
     # Leave Management
     path('leave/', views.leave_request_list, name="leave_request_list"),
     path('leave/create/', views.create_leave_request, name="create_leave_request"),
@@ -97,6 +99,8 @@ urlpatterns = [
     
     # New URL pattern for my_documents
     path('my-documents/', views.my_documents, name='my_documents'),
+    path('upload-document/', views.upload_document, name='upload_document'),
+    path('update-document/<int:doc_id>/', views.update_document, name='update_document'),
     # New URL pattern for my_projects
     path('my-projects/', views.my_projects, name='my_projects'),
     
@@ -115,9 +119,22 @@ urlpatterns = [
     path('training/blogs/<int:blog_id>/delete/', views.delete_training_blog, name='delete_training_blog'),
     path('training/documents/<int:document_id>/delete/', views.delete_training_document, name='delete_training_document'),
     
+    # Asset Management URLs
+    path('assets/', views.asset_dashboard, name='asset_dashboard'),
+    path('assets/list/', views.asset_list, name='asset_list'),
+    path('assets/create/', views.asset_create, name='asset_create'),
+    path('assets/<str:asset_id>/', views.asset_detail, name='asset_detail'),
+    path('assets/<str:asset_id>/edit/', views.asset_edit, name='asset_edit'),
+    path('assets/<str:asset_id>/assign/', views.asset_assign, name='asset_assign'),
+    path('assets/return/<int:assignment_id>/', views.asset_return, name='asset_return'),
+    path('assets/<str:asset_id>/delete/', views.asset_delete, name='asset_delete'),
+    
     path('', include(router.urls)),
     path('api/docs/', login_required(schema_view.with_ui('swagger', cache_timeout=0)), name='api-docs'),
     path('profile/forms/', views.employee_profile_forms, name='employee_profile_forms'),
     path('profile/review/<str:employee_id>/', views.review_employee_forms, name='review_employee_forms'),
     path('hr/validation/', views.employee_validation_list, name='employee_validation_list'),
+    path('auth/initiate/', views.initiate_auth, name='initiate_auth'),
+    path('auth/callback/', views.auth_callback, name='auth_callback'),
+    path('auth/test-email/', views.test_email, name='test_email'),
 ]

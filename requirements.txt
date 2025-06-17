@@ -5,4 +5,7 @@ django-allauth
 gunicorn
 whitenoise
 psycopg2-binary
-python-dotenv 
+python-dotenv
+django-jazzmin
+msal
+requests 

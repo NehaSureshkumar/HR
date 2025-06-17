@@ -1,0 +1,185 @@
+{% extends 'employee/base.html' %}
+{% load static %}
+{% load tz %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/attendance.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">Attendance Management</h1>
+        <div class="flex space-x-4">
+            {% if not today_attendance %}
+                <button id="clockInBtn" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                    <i class="fas fa-sign-in-alt mr-2"></i> Clock In
+                </button>
+            {% elif today_attendance and not today_attendance.time_out %}
+                <button id="clockOutBtn" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                    <i class="fas fa-sign-out-alt mr-2"></i> Clock Out
+                </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Today's Status -->
+    <div class="bg-white shadow rounded-lg mb-6">
+        <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">Today's Status</h3>
+            <div class="mt-5">
+                {% if today_attendance %}
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="text-center">
+                            <p class="text-sm font-medium text-gray-500">Clock In</p>
+                            <p class="mt-1 text-2xl font-semibold text-gray-900" id="clockInTime">{{ today_attendance.time_in|localtime|time:"H:i" }}</p>
+                        </div>
+                        <div class="text-center">
+                            <p class="text-sm font-medium text-gray-500">Clock Out</p>
+                            <p class="mt-1 text-2xl font-semibold text-gray-900" id="clockOutTime">
+                                {% if today_attendance.time_out %}
+                                    {{ today_attendance.time_out|localtime|time:"H:i" }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="mt-4 text-center">
+                        <p class="text-sm font-medium text-gray-500">Status</p>
+                        <p class="mt-1 text-lg font-semibold {% if today_attendance.status == 'PRESENT' %}text-green-600{% elif today_attendance.status == 'LATE' %}text-yellow-600{% elif today_attendance.status == 'HALF_DAY' %}text-orange-600{% else %}text-red-600{% endif %}">
+                            {{ today_attendance.status }}
+                        </p>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <p class="text-gray-500">Not clocked in today</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance History -->
+    <div class="bg-white shadow rounded-lg">
+        <div class="px-4 py-5 sm:p-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Attendance History</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Clock In</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Clock Out</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for record in attendance_records %}
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ record.date|date:"d M Y" }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ record.time_in|localtime|time:"H:i" }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ record.time_out|localtime|time:"H:i"|default:"-" }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ record.status }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    // Get CSRF token from cookie
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    const csrftoken = getCookie('csrftoken');
+    if (!csrftoken) {
+        console.error('CSRF token not found. Ensure {% csrf_token %} is included in the template.');
+    }
+
+    // Clock In
+    $('#clockInBtn').click(function() {
+        const $btn = $(this);
+        $btn.prop('disabled', true).text('Clocking In...');
+        
+        $.ajax({
+            url: '{% url "clock_in" %}',
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#clockInTime').text(response.clock_in_time);
+                    $btn.remove();
+                    $('<button id="clockOutBtn" class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"><i class="fas fa-sign-out-alt mr-2"></i> Clock Out</button>')
+                        .insertBefore('.space-x-4');
+                    alert('Clocked in successfully!');
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            },
+            error: function(xhr) {
+                if (xhr.status === 403) {
+                    alert('CSRF verification failed. Please refresh the page and try again.');
+                } else {
+                    alert('An error occurred. Please try again.');
+                }
+            },
+            complete: function() {
+                $btn.prop('disabled', false).text('Clock In');
+            }
+        });
+    });
+
+    // Clock Out
+    $(document).on('click', '#clockOutBtn', function() {
+        const $btn = $(this);
+        $btn.prop('disabled', true).text('Clocking Out...');
+        
+        $.ajax({
+            url: '{% url "clock_out" %}',
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#clockOutTime').text(response.clock_out_time);
+                    $btn.remove();
+                    alert('Clocked out successfully!');
+                } else {
+                    alert('Error: ' + response.message);
+                }
+            },
+            error: function(xhr) {
+                if (xhr.status === 403) {
+                    alert('CSRF verification failed. Please refresh the page and try again.');
+                } else {
+                    alert('An error occurred. Please try again.');
+                }
+            },
+            complete: function() {
+                $btn.prop('disabled', false).text('Clock Out');
+            }
+        });
+    });
+});
+</script>
+{% endblock %} 

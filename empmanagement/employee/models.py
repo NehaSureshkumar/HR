@@ -6,6 +6,14 @@ from turtle import title
 from django.db import models
 from django.utils import timezone
 from django.contrib.postgres.fields import JSONField  # For JSON storage (if using Postgres)
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from .utils import send_new_employee_notification
+import logging
+from threading import local
+from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 # Role choices
 ROLE_CHOICES = (
@@ -153,8 +161,8 @@ class Attendance(models.Model):
     status = models.CharField(max_length=20, choices=[
         ('PRESENT', 'Present'),
         ('ABSENT', 'Absent'),
-        ('HALF_DAY', 'Half Day'),
-        ('LATE', 'Late')
+        ('LATE', 'Late'),
+        ('HALF_DAY', 'Half Day')
     ], default='PRESENT')
     overtime_hours = models.DecimalField(max_digits=4, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -162,6 +170,7 @@ class Attendance(models.Model):
 
     class Meta:
         db_table = 'employee_attendance'
+        ordering = ['-date', '-time_in']
 
     def __str__(self):
         return f"{self.eId} - {self.date}"
@@ -220,18 +229,25 @@ class UserProfile(models.Model):
         return f"{self.user.username} - {self.role}"
 
 class Document(models.Model):
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
-    document_type = models.CharField(max_length=20, choices=DOCUMENT_TYPES)
+    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, related_name='documents')
+    document_type = models.CharField(max_length=50, choices=[
+        ('ID_PROOF', 'ID Proof'),
+        ('ADDRESS_PROOF', 'Address Proof'),
+        ('EDUCATION', 'Education Certificate'),
+        ('EXPERIENCE', 'Experience Certificate'),
+        ('OFFER_LETTER', 'Offer Letter'),
+        ('OTHER', 'Other')
+    ])
     file = models.FileField(upload_to='employee_documents/')
-    status = models.CharField(max_length=20, choices=DOCUMENT_STATUS, default='PENDING')
     uploaded_at = models.DateTimeField(auto_now_add=True)
-    verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
-    verified_at = models.DateTimeField(null=True, blank=True)
-    comments = models.TextField(blank=True)
-    allow_reupload = models.BooleanField(default=False)
+    description = models.TextField(blank=True)
+    is_verified = models.BooleanField(default=False)
     
     def __str__(self):
-        return f"{self.employee.eID} - {self.document_type}"
+        return f"{self.employee.firstName}'s {self.get_document_type_display()}"
+
+    class Meta:
+        ordering = ['-uploaded_at']
 
 class AuditLog(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -544,3 +560,109 @@ class EmailSettings(models.Model):
 
     def __str__(self):
         return f"SMTP: {self.EMAIL_HOST_USER} ({self.get_provider_display()})" 
+
+class AssetCategory(models.Model):
+    name = models.CharField(max_length=100)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name_plural = "Asset Categories"
+
+class Asset(models.Model):
+    CONDITION_CHOICES = [
+        ('NEW', 'New'),
+        ('GOOD', 'Good'),
+        ('FAIR', 'Fair'),
+        ('POOR', 'Poor'),
+        ('DAMAGED', 'Damaged'),
+    ]
+
+    STATUS_CHOICES = [
+        ('AVAILABLE', 'Available'),
+        ('ASSIGNED', 'Assigned'),
+        ('MAINTENANCE', 'Under Maintenance'),
+        ('RETIRED', 'Retired'),
+    ]
+
+    asset_id = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=200)
+    category = models.ForeignKey(AssetCategory, on_delete=models.PROTECT)
+    description = models.TextField(blank=True)
+    serial_number = models.CharField(max_length=100, blank=True)
+    purchase_date = models.DateField(null=True, blank=True)
+    purchase_cost = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    condition = models.CharField(max_length=20, choices=CONDITION_CHOICES, default='NEW')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='AVAILABLE')
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.asset_id} - {self.name}"
+
+class AssetAssignment(models.Model):
+    asset = models.ForeignKey(Asset, on_delete=models.PROTECT)
+    employee = models.ForeignKey(Employee, on_delete=models.PROTECT)
+    assigned_date = models.DateField()
+    return_date = models.DateField(null=True, blank=True)
+    assigned_by = models.ForeignKey(User, on_delete=models.PROTECT)
+    assignment_notes = models.TextField(blank=True)
+    return_notes = models.TextField(blank=True)
+    is_returned = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.asset} assigned to {self.employee}"
+
+    def save(self, *args, **kwargs):
+        if not self.is_returned:
+            self.asset.status = 'ASSIGNED'
+        else:
+            self.asset.status = 'AVAILABLE'
+        self.asset.save()
+        super().save(*args, **kwargs) 
+
+class BankDetail(models.Model):
+    employee = models.OneToOneField(Employee, on_delete=models.CASCADE)
+    account_number = models.CharField(max_length=50)
+    ifsc = models.CharField(max_length=20)
+    bank_name = models.CharField(max_length=100)
+    branch = models.CharField(max_length=100)
+    
+    def __str__(self):
+        return f"{self.employee.firstName} {self.employee.lastName}'s Bank Details"
+
+class InsurancePolicy(models.Model):
+    employee = models.OneToOneField(Employee, on_delete=models.CASCADE)
+    policy_number = models.CharField(max_length=50)
+    provider = models.CharField(max_length=100)
+    coverage_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    expiry_date = models.DateField()
+    
+    def __str__(self):
+        return f"{self.employee.firstName} {self.employee.lastName}'s Insurance"
+
+class TaxDetail(models.Model):
+    employee = models.OneToOneField(Employee, on_delete=models.CASCADE)
+    pan_number = models.CharField(max_length=10)
+    tax_regime = models.CharField(max_length=20, choices=[('OLD', 'Old Regime'), ('NEW', 'New Regime')])
+    tax_declarations = models.JSONField(default=dict)
+    
+    def __str__(self):
+        return f"{self.employee.firstName} {self.employee.lastName}'s Tax Details"
+
+class PersonalDetail(models.Model):
+    employee = models.OneToOneField(Employee, on_delete=models.CASCADE)
+    emergency_contact_name = models.CharField(max_length=100)
+    emergency_contact_phone = models.CharField(max_length=20)
+    blood_group = models.CharField(max_length=5, blank=True, null=True)
+    address = models.TextField()
+    
+    def __str__(self):
+        return f"{self.employee.firstName} {self.employee.lastName}'s Personal Details" 
