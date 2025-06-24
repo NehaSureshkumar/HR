@@ -1,9 +1,12 @@
+--prefer-binary
+
 pip==23.2.1
 setuptools==68.0.0
 wheel==0.41.0
 
-# Start with these (safe core packages):
 Django>=4.0.0
 gunicorn
 whitenoise
 psycopg2-binary
+django-crispy-forms
+Pillow
